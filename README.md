@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Timeline Visualizer
 
-## Getting Started
+A minimal, local-first web application to turn Google Maps Timeline exports into interactive route visualizations and MP4 videos.
 
-First, run the development server:
+## 🚀 Live Demo
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Vercel Production**: [https://timeline-visualer.vercel.app/](https://timeline-visualer.vercel.app/)
+- **Local Dev Server**: [http://localhost:3000](http://localhost:3000)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 🧭 Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Local-First & Private**: GPS and location history are processed and stored exclusively in your browser via IndexedDB. No location data is sent to external servers.
+- **Universal Timeline Parser**: Supports Google Maps modern `Linimasa.json` export (`semanticSegments`, `timelinePath`, `visit`, `activity`, `rawSignals`), Google Takeout `timelineObjects`, and `locations` history files.
+- **4 Visual Storytelling Styles**:
+  - **Normal**: Clean minimalist polyline route tracing.
+  - **Travel**: Cinematic path glow with waypoint reveals.
+  - **Transport**: High-contrast electric styling for transit modes.
+  - **Vehicle**: Direction-aligned vehicle tracer following the movement trajectory.
+- **Video Export (MP4)**:
+  - Formats: 9:16 Vertical, 1:1 Square, 16:9 Landscape.
+  - Configurable duration between 5 to 90 seconds.
+- **Follow Proof Unlock Gate**: AI-powered screenshot follow verification for `@timelinevisualizer`.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🛠️ Getting Started Locally
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2. Configure environment variables in `.env`:
+   ```env
+   AI_API_KEY=your_openrouter_api_key
+   ```
 
-## Deploy on Vercel
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
