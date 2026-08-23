@@ -1,2 +1,17 @@
-const key = "timeline_onboarding_completed";
-export const onboardingState = { isComplete: () => localStorage.getItem(key) === "true", complete: () => localStorage.setItem(key, "true"), reset: () => localStorage.removeItem(key) };
+import { localStorageService } from "@/shared/services/local-storage.service";
+
+const ONBOARDING_KEY = "timeline_onboarding_completed";
+
+export const onboardingState = {
+  isComplete() {
+    return localStorageService.get(ONBOARDING_KEY) === "true";
+  },
+
+  complete() {
+    localStorageService.set(ONBOARDING_KEY, "true");
+  },
+
+  reset() {
+    localStorageService.remove(ONBOARDING_KEY);
+  },
+};

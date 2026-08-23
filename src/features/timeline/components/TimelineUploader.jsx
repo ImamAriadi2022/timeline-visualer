@@ -1,0 +1,99 @@
+"use client";
+import React, { useRef, useState } from "react";
+import { UploadIcon } from "@/shared/components/Icons";
+
+export function TimelineUploader({ onFileSelected, isLoading = false, error = null }) {
+  const fileInputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const processFile = (file) => {
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".json") && file.type !== "application/json") {
+      onFileSelected?.(null, "Please choose a valid JSON file exported from Google Maps Timeline.");
+      return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+      onFileSelected?.(null, "File is larger than 100 MB. Please provide a smaller Timeline export.");
+      return;
+    }
+
+    onFileSelected?.(file, null);
+  };
+
+  return (
+    <div className="w-full">
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => !isLoading && fileInputRef.current?.click()}
+        className={`group relative flex flex-col items-center justify-center p-10 sm:p-14 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-200 ${
+          isDragging
+            ? "border-[#007AFF] bg-[#007AFF]/10 scale-[1.01]"
+            : "border-[#38383A] hover:border-[#86868B] bg-[#1C1C1E]/80 hover:bg-[#1C1C1E]"
+        } ${isLoading ? "opacity-60 pointer-events-none" : ""}`}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={handleFileInputChange}
+          className="hidden"
+          aria-label="Upload Google Maps Timeline JSON file"
+        />
+
+        <div className="w-16 h-16 rounded-2xl bg-[#2C2C2E] group-hover:bg-[#3A3A3C] flex items-center justify-center text-[#F5F5F7] mb-5 transition-colors shadow-inner">
+          <UploadIcon className="w-7 h-7 text-[#007AFF]" />
+        </div>
+
+        <h3 className="text-xl sm:text-2xl font-semibold text-white tracking-tight mb-2 text-center">
+          {isLoading ? "Reading your Timeline..." : "Import your Timeline"}
+        </h3>
+
+        <p className="text-sm text-[#98989D] text-center max-w-sm mb-6 leading-relaxed">
+          Drag & drop your Google Maps export JSON here, or click to browse. Data never leaves your device.
+        </p>
+
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2C2C2E] border border-[#38383A] text-xs font-medium text-[#F5F5F7] group-hover:bg-[#3A3A3C] transition-colors">
+          <span>Choose File</span>
+          <span className="text-[#6E6E73]">·</span>
+          <span className="text-[#007AFF]">JSON</span>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mt-4 p-4 rounded-xl bg-[#FF453A]/10 border border-[#FF453A]/20 text-[#FF453A] text-sm text-center">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}

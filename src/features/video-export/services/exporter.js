@@ -1,2 +1,15 @@
-import { drawFrame } from "../../visualization/services/engine";
-export async function exportMp4({points,style,duration,aspect,onProgress}){if(!window.MediaRecorder||!MediaRecorder.isTypeSupported("video/mp4"))throw new Error("MP4 export needs a browser with MP4 MediaRecorder support. Use Safari or a current browser that supports video/mp4.");const [w,h]=aspect==="portrait"?[540,960]:aspect==="landscape"?[960,540]:[720,720],c=document.createElement("canvas");c.width=w;c.height=h;const stream=c.captureStream(30),chunks=[],rec=new MediaRecorder(stream,{mimeType:"video/mp4",videoBitsPerSecond:8e6}),done=new Promise((ok,no)=>{rec.onstop=()=>ok(new Blob(chunks,{type:"video/mp4"}));rec.onerror=()=>no(new Error("The browser video encoder failed."));});rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);rec.start(1000);const ctx=c.getContext("2d"),n=duration*30;for(let i=0;i<n;i++){drawFrame(ctx,w,h,points,i/(n-1),style);if(i%15===0){onProgress(Math.round(i/n*100));await new Promise(r=>setTimeout(r,0));}}rec.stop();return done;}
+import { renderTimelineVideo } from "./video-export.service";
+
+/**
+ * Backwards-compatible exportMp4 function
+ */
+export async function exportMp4({ points, style, duration, aspect, onProgress }) {
+  const result = await renderTimelineVideo({
+    points,
+    style,
+    durationSeconds: duration,
+    aspectRatio: aspect,
+    onProgress,
+  });
+  return result.blob;
+}
