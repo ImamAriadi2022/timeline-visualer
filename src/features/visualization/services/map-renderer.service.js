@@ -62,7 +62,7 @@ export function createProjector(points, width, height, paddingRatio = 0.1) {
 }
 
 /**
- * Draws a single frame of the timeline journey visualization.
+ * Draws a single frame of the timeline journey visualization with smooth sub-pixel interpolation.
  */
 export function renderVisualizationFrame({
   ctx,
@@ -92,8 +92,46 @@ export function renderVisualizationFrame({
 
   const clampedProgress = Math.max(0, Math.min(1, progress));
   const totalPoints = points.length;
-  const currentIdx = Math.max(0, Math.min(totalPoints - 1, Math.floor(clampedProgress * (totalPoints - 1))));
-  const activePoints = points.slice(0, currentIdx + 1);
+
+  // Compute smooth sub-pixel interpolated head point
+  let activePoints = [];
+  let headCoord = points[0];
+  let headAngle = 0;
+
+  if (totalPoints === 1) {
+    activePoints = [points[0]];
+    headCoord = points[0];
+  } else {
+    const exactIndex = clampedProgress * (totalPoints - 1);
+    const baseIdx = Math.floor(exactIndex);
+    const frac = exactIndex - baseIdx;
+
+    const basePoints = points.slice(0, baseIdx + 1);
+
+    if (baseIdx < totalPoints - 1) {
+      const p1 = points[baseIdx];
+      const p2 = points[baseIdx + 1];
+      headCoord = {
+        lat: p1.lat + (p2.lat - p1.lat) * frac,
+        lng: p1.lng + (p2.lng - p1.lng) * frac,
+        time: p1.time || p2.time,
+      };
+
+      const pt1 = project(p1);
+      const pt2 = project(p2);
+      headAngle = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
+
+      activePoints = [...basePoints, headCoord];
+    } else {
+      headCoord = points[totalPoints - 1];
+      activePoints = points;
+      if (totalPoints > 1) {
+        const pt1 = project(points[totalPoints - 2]);
+        const pt2 = project(points[totalPoints - 1]);
+        headAngle = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
+      }
+    }
+  }
 
   // 1. Draw entire faint route background (history path)
   ctx.lineCap = "round";
@@ -127,7 +165,8 @@ export function renderVisualizationFrame({
 
     // Subtle waypoint circles at intervals
     const step = Math.max(1, Math.floor(totalPoints / 25));
-    for (let i = 0; i <= currentIdx; i += step) {
+    const currentBaseIdx = Math.floor(clampedProgress * (totalPoints - 1));
+    for (let i = 0; i <= currentBaseIdx; i += step) {
       const pt = project(points[i]);
       ctx.fillStyle = "rgba(100, 210, 255, 0.3)";
       ctx.beginPath();
@@ -178,17 +217,11 @@ export function renderVisualizationFrame({
     ctx.fill();
   }
 
-  // 4. Draw Current Position Indicator / Vehicle Head
-  const currentCoord = activePoints[activePoints.length - 1] || points[0];
-  const currentPt = project(currentCoord);
+  // 4. Draw Current Position Indicator / Vehicle Head with smooth interpolation
+  const currentPt = project(headCoord);
 
   if (style === "vehicle" && activePoints.length > 1) {
-    // Calculate direction from last 2 points
-    const prevCoord = activePoints[activePoints.length - 2];
-    const prevPt = project(prevCoord);
-    const angle = Math.atan2(currentPt.y - prevPt.y, currentPt.x - prevPt.x);
-
-    drawVehicleMarker(ctx, currentPt.x, currentPt.y, angle, width);
+    drawVehicleMarker(ctx, currentPt.x, currentPt.y, headAngle, width);
   } else {
     // Standard sleek tracer head
     drawPulseMarker(ctx, currentPt.x, currentPt.y, style, width);

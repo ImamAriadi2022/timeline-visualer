@@ -2,9 +2,15 @@
 import React, { useState } from "react";
 import { Dialog } from "@/shared/components/Dialog";
 import { Button } from "@/shared/components/Button";
-import { DownloadIcon } from "@/shared/components/Icons";
+import { DownloadIcon, SparklesIcon } from "@/shared/components/Icons";
 import { ASPECT_RATIOS } from "@/shared/constants/aspect-ratios";
 import { renderTimelineVideo } from "../services/video-export.service";
+
+const FPS_OPTIONS = [
+  { id: 25, label: "25 FPS", sublabel: "Standar" },
+  { id: 30, label: "30 FPS", sublabel: "Halus" },
+  { id: 60, label: "60 FPS", sublabel: "Sangat Mulus ✨" },
+];
 
 export function ExportModal({
   isOpen,
@@ -17,6 +23,7 @@ export function ExportModal({
 }) {
   const [aspect, setAspect] = useState("square");
   const [duration, setDuration] = useState(10);
+  const [fps, setFps] = useState(60);
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
@@ -43,6 +50,7 @@ export function ExportModal({
         style,
         durationSeconds: Number(duration),
         aspectRatio: aspect,
+        fps: Number(fps),
         onProgress: setProgress,
       });
 
@@ -51,7 +59,7 @@ export function ExportModal({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `animasi-perjalanan-${style}-${duration}s.${ext}`;
+      a.download = `animasi-perjalanan-${style}-${duration}s-${fps}fps.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -74,13 +82,13 @@ export function ExportModal({
       subtitle="EKSPOR"
       maxWidth="max-w-lg"
     >
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Aspect Ratio Selector */}
         <div>
-          <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2.5">
+          <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
             Format / Rasio Aspek
           </label>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2">
             {Object.values(ASPECT_RATIOS).map((item) => {
               const selected = aspect === item.id;
               return (
@@ -89,7 +97,37 @@ export function ExportModal({
                   type="button"
                   disabled={isRendering}
                   onClick={() => setAspect(item.id)}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                  className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
+                    selected
+                      ? "bg-[#2C2C2E] border-[#007AFF] text-white shadow-sm"
+                      : "bg-[#1C1C1E] border-[#38383A] text-[#98989D] hover:border-[#6E6E73] hover:text-[#F5F5F7]"
+                  }`}
+                >
+                  <span className="text-sm font-bold">{item.label}</span>
+                  <span className="text-[10px] text-[#6E6E73] mt-0.5">
+                    {item.sublabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Framerate (FPS) Selector */}
+        <div>
+          <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
+            Frame Rate (Kelancaran Animasi)
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {FPS_OPTIONS.map((item) => {
+              const selected = fps === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={isRendering}
+                  onClick={() => setFps(item.id)}
+                  className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
                     selected
                       ? "bg-[#2C2C2E] border-[#007AFF] text-white shadow-sm"
                       : "bg-[#1C1C1E] border-[#38383A] text-[#98989D] hover:border-[#6E6E73] hover:text-[#F5F5F7]"
@@ -132,7 +170,7 @@ export function ExportModal({
         {isRendering && (
           <div className="p-4 rounded-xl bg-[#2C2C2E]/60 border border-[#38383A] space-y-2">
             <div className="flex items-center justify-between text-xs text-[#F5F5F7]">
-              <span>Merender frame di browser secara lokal...</span>
+              <span>Merender {fps} FPS secara mulus di browser...</span>
               <span className="font-mono font-semibold text-[#007AFF]">
                 {progress}%
               </span>
@@ -171,7 +209,7 @@ export function ExportModal({
             {isRendering
               ? `Merender (${progress}%)`
               : isUnlocked
-              ? "Ekspor Video (MP4)"
+              ? `Ekspor Video (${fps} FPS)`
               : "Buka Kunci Ekspor MP4"}
           </Button>
         </div>

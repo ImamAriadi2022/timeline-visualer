@@ -2,7 +2,7 @@ import { renderVisualizationFrame } from "@/features/visualization/services/map-
 import { getSupportedVideoMimeType } from "./video-encoder.service";
 
 /**
- * Renders the timeline journey to a video Blob.
+ * Renders the timeline journey to a video Blob with silky-smooth frame timing.
  */
 export async function renderTimelineVideo({
   points,
@@ -10,7 +10,7 @@ export async function renderTimelineVideo({
   style = "normal",
   durationSeconds = 10,
   aspectRatio = "square",
-  fps = 30,
+  fps = 60,
   onProgress,
 }) {
   if (!points || points.length === 0) {
@@ -41,12 +41,17 @@ export async function renderTimelineVideo({
   canvas.height = height;
   const ctx = canvas.getContext("2d");
 
+  // Use canvas stream with target framerate
   const stream = canvas.captureStream(fps);
+  const [videoTrack] = stream.getVideoTracks();
   const chunks = [];
+
+  // High bitrate for 60fps / 30fps crisp quality
+  const targetBitrate = fps >= 60 ? 12_000_000 : 8_000_000;
 
   const recorder = new MediaRecorder(stream, {
     mimeType,
-    videoBitsPerSecond: 8_000_000, // 8 Mbps for crisp output
+    videoBitsPerSecond: targetBitrate,
   });
 
   const recordingFinished = new Promise((resolve, reject) => {
@@ -66,9 +71,25 @@ export async function renderTimelineVideo({
     }
   };
 
-  recorder.start(500);
+  recorder.start(250);
 
-  const totalFrames = Math.max(15, Math.floor(durationSeconds * fps));
+  const totalFrames = Math.max(25, Math.floor(durationSeconds * fps));
+  const frameIntervalMs = 1000 / fps;
+
+  // Render initial static frame before starting loop
+  renderVisualizationFrame({
+    ctx,
+    width,
+    height,
+    points,
+    places,
+    progress: 0,
+    style,
+  });
+  if (videoTrack?.requestFrame) videoTrack.requestFrame();
+  await new Promise((r) => setTimeout(r, frameIntervalMs));
+
+  const startTime = performance.now();
 
   for (let frame = 0; frame < totalFrames; frame++) {
     const progress = frame / (totalFrames - 1);
@@ -83,11 +104,22 @@ export async function renderTimelineVideo({
       style,
     });
 
-    if (frame % 5 === 0 || frame === totalFrames - 1) {
-      onProgress?.(Math.round((frame / totalFrames) * 100));
-      await new Promise((r) => setTimeout(r, 0));
+    if (videoTrack?.requestFrame) {
+      videoTrack.requestFrame();
     }
+
+    if (frame % Math.max(1, Math.floor(fps / 5)) === 0 || frame === totalFrames - 1) {
+      onProgress?.(Math.round((frame / totalFrames) * 100));
+    }
+
+    // Precise real-time pacing so MediaRecorder captures every single frame smoothly
+    const targetTime = startTime + (frame + 1) * frameIntervalMs;
+    const delay = Math.max(2, targetTime - performance.now());
+    await new Promise((r) => setTimeout(r, delay));
   }
+
+  // Hold end frame slightly for clean finish
+  await new Promise((r) => setTimeout(r, Math.max(100, frameIntervalMs * 3)));
 
   recorder.stop();
   return recordingFinished;
