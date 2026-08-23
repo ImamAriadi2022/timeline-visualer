@@ -1,14 +1,16 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { OnboardingPage } from "@/features/onboarding/pages/OnboardingPage";
+import { TimelineWelcomePage } from "@/features/timeline/pages/TimelineWelcomePage";
 import { TimelineImportPage } from "@/features/timeline/pages/TimelineImportPage";
 import { TimelineDashboardPage } from "@/features/timeline/pages/TimelineDashboardPage";
 import { onboardingState } from "@/features/onboarding/services/onboarding.service";
 import { timelineStorage } from "@/features/timeline/services/timeline-storage.service";
+import { getSampleTimelineData } from "@/features/timeline/services/sample-data.service";
 import { LoadingState } from "@/shared/components/LoadingState";
 
 export function TimelineApp() {
-  const [screen, setScreen] = useState("loading"); // "loading" | "onboarding" | "import" | "dashboard"
+  const [screen, setScreen] = useState("loading"); // "loading" | "onboarding" | "welcome" | "prepare" | "dashboard"
   const [timelineData, setTimelineData] = useState(null);
 
   useEffect(() => {
@@ -17,14 +19,16 @@ export function TimelineApp() {
         const isFirstTime = !onboardingState.isComplete();
         const savedTimeline = await timelineStorage.load();
 
-        if (savedTimeline && savedTimeline.points?.length > 0) {
+        if (isFirstTime) {
+          setScreen("onboarding");
+        } else if (savedTimeline && savedTimeline.points?.length > 0) {
           setTimelineData(savedTimeline);
-          setScreen(isFirstTime ? "onboarding" : "dashboard");
+          setScreen("dashboard");
         } else {
-          setScreen(isFirstTime ? "onboarding" : "import");
+          setScreen("welcome");
         }
       } catch {
-        setScreen("import");
+        setScreen("welcome");
       }
     }
 
@@ -35,8 +39,19 @@ export function TimelineApp() {
     if (timelineData && timelineData.points?.length > 0) {
       setScreen("dashboard");
     } else {
-      setScreen("import");
+      setScreen("welcome");
     }
+  };
+
+  const handleStartTimeline = () => {
+    setScreen("prepare");
+  };
+
+  const handleUseSample = async () => {
+    const sample = getSampleTimelineData();
+    await timelineStorage.save(sample);
+    setTimelineData(sample);
+    setScreen("dashboard");
   };
 
   const handleTimelineLoaded = (loadedTimeline) => {
@@ -47,7 +62,7 @@ export function TimelineApp() {
   const handleReset = async () => {
     await timelineStorage.clear();
     setTimelineData(null);
-    setScreen("import");
+    setScreen("prepare");
   };
 
   const handleHelp = () => {
@@ -70,8 +85,23 @@ export function TimelineApp() {
     return <OnboardingPage onFinish={handleFinishOnboarding} />;
   }
 
-  if (screen === "import") {
-    return <TimelineImportPage onTimelineLoaded={handleTimelineLoaded} />;
+  if (screen === "welcome") {
+    return (
+      <TimelineWelcomePage
+        onStart={handleStartTimeline}
+        onUseSample={handleUseSample}
+      />
+    );
+  }
+
+  if (screen === "prepare") {
+    return (
+      <TimelineImportPage
+        onTimelineLoaded={handleTimelineLoaded}
+        onBack={() => setScreen("welcome")}
+        onUseSample={handleUseSample}
+      />
+    );
   }
 
   return (
