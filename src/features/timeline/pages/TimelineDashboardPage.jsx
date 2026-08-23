@@ -8,11 +8,22 @@ import { ExportModal } from "@/features/video-export/components/ExportModal";
 import { FollowProofModal } from "@/features/follow-verification/components/FollowProofModal";
 import { createAnimationController } from "@/features/visualization/services/route-animation.service";
 import { exportEntitlement } from "@/features/follow-verification/services/entitlement.service";
+import { ASPECT_RATIOS } from "@/shared/constants/aspect-ratios";
 import { Button } from "@/shared/components/Button";
 import { DownloadIcon, HelpIcon, UploadIcon } from "@/shared/components/Icons";
 
+const FPS_OPTIONS = [
+  { id: 25, label: "25 FPS", sublabel: "Standar" },
+  { id: 30, label: "30 FPS", sublabel: "Halus" },
+  { id: 60, label: "60 FPS", sublabel: "Sangat Mulus ✨" },
+];
+
 export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
   const [style, setStyle] = useState("normal");
+  const [aspectRatio, setAspectRatio] = useState("square");
+  const [duration, setDuration] = useState(10);
+  const [fps, setFps] = useState(60);
+
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -21,10 +32,10 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
 
   const animControllerRef = useRef(null);
 
-  // Initialize animation controller
+  // Initialize animation controller with user-selected duration
   useEffect(() => {
     const controller = createAnimationController({
-      durationSeconds: 12,
+      durationSeconds: Number(duration),
       onProgress: (p) => {
         setProgress(p);
       },
@@ -34,13 +45,12 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
     });
 
     animControllerRef.current = controller;
-    // Auto-play once loaded
     controller.play(0);
 
     return () => {
       controller.destroy();
     };
-  }, [timeline]);
+  }, [timeline, duration]);
 
   const handleTogglePlay = () => {
     if (!animControllerRef.current) return;
@@ -106,7 +116,7 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-[#98989D] hover:text-[#F5F5F7] hover:bg-white/5 transition-colors"
           >
             <UploadIcon className="w-3.5 h-3.5" />
-            <span>Impor Baru</span>
+            <span>Ganti Data</span>
           </button>
 
           <button
@@ -121,7 +131,7 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
       </header>
 
       {/* Main Studio Workspace */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_380px] overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_400px] overflow-hidden">
         {/* Left: Map Canvas & Scrubber */}
         <main className="flex flex-col p-4 sm:p-6 gap-4 overflow-y-auto">
           <div className="flex-1 min-h-[400px] lg:min-h-[500px]">
@@ -147,16 +157,98 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
           </div>
         </main>
 
-        {/* Right: Controls & Metrics Sidebar */}
+        {/* Right: Controls & Export Settings Sidebar */}
         <aside className="border-t lg:border-t-0 lg:border-l border-[#2C2C2E] bg-[#0A0A0C] p-6 flex flex-col justify-between gap-6 overflow-y-auto">
           <div className="space-y-6">
-            {/* Style Selector */}
+            {/* 1. Style Selector */}
             <StyleSelector
               currentStyle={style}
               onStyleChange={(newStyle) => setStyle(newStyle)}
             />
 
-            {/* Statistics */}
+            {/* 2. Aspect Ratio Selector */}
+            <div>
+              <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
+                Format / Rasio Aspek Video
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {Object.values(ASPECT_RATIOS).map((item) => {
+                  const selected = aspectRatio === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setAspectRatio(item.id)}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
+                        selected
+                          ? "bg-[#2C2C2E] border-[#007AFF] text-white shadow-sm"
+                          : "bg-[#1C1C1E] border-[#38383A] text-[#98989D] hover:border-[#6E6E73] hover:text-[#F5F5F7]"
+                      }`}
+                    >
+                      <span className="text-xs font-bold">{item.label}</span>
+                      <span className="text-[10px] text-[#6E6E73] mt-0.5">
+                        {item.ratio}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. Duration Slider */}
+            <div>
+              <div className="flex items-center justify-between text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
+                <span>Durasi Animasi / Video</span>
+                <span className="text-white font-mono text-sm bg-[#1C1C1E] px-2 py-0.5 rounded border border-[#2C2C2E]">
+                  {duration} detik
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-[#6E6E73]">5s</span>
+                <input
+                  type="range"
+                  min="5"
+                  max="90"
+                  step="1"
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className="w-full h-2 bg-[#2C2C2E] rounded-lg appearance-none cursor-pointer accent-[#007AFF]"
+                />
+                <span className="text-xs text-[#6E6E73]">90s</span>
+              </div>
+            </div>
+
+            {/* 4. Frame Rate (FPS) Selector */}
+            <div>
+              <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
+                Frame Rate (Kelancaran)
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {FPS_OPTIONS.map((item) => {
+                  const selected = fps === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setFps(item.id)}
+                      className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all ${
+                        selected
+                          ? "bg-[#2C2C2E] border-[#007AFF] text-white shadow-sm"
+                          : "bg-[#1C1C1E] border-[#38383A] text-[#98989D] hover:border-[#6E6E73] hover:text-[#F5F5F7]"
+                      }`}
+                    >
+                      <span className="text-xs font-bold">{item.label}</span>
+                      <span className="text-[9px] text-[#6E6E73] mt-0.5">
+                        {item.sublabel}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 5. Statistics */}
             <div>
               <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2.5">
                 Wawasan Perjalanan
@@ -165,31 +257,34 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
             </div>
           </div>
 
-          {/* Export Action */}
+          {/* Export Action Trigger */}
           <div className="pt-4 border-t border-[#2C2C2E]">
             <Button
               variant="primary"
               size="lg"
-              className="w-full shadow-lg"
+              className="w-full shadow-lg shadow-blue-500/20 py-3.5"
               onClick={handleOpenExport}
               icon={<DownloadIcon className="w-4 h-4" />}
             >
               Ekspor Video MP4
             </Button>
             <p className="text-[11px] text-[#6E6E73] text-center mt-2.5">
-              Render dalam 9:16, 1:1, atau 16:9 di browser Anda
+              Render {duration}s · {fps} FPS · Rasio {ASPECT_RATIOS[aspectRatio]?.label}
             </p>
           </div>
         </aside>
       </div>
 
-      {/* Export Modal */}
+      {/* Export Modal with Focused Live Preview & Download */}
       <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         points={points}
         places={timeline?.places || []}
         style={style}
+        aspectRatio={aspectRatio}
+        duration={duration}
+        fps={fps}
         isUnlocked={isUnlocked}
         onRequestUnlock={() => {
           setIsExportOpen(false);

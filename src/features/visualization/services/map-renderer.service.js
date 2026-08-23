@@ -31,7 +31,7 @@ export function createProjector(points, width, height, paddingRatio = 0.1) {
   const drawWidth = width - padX * 2;
   const drawHeight = height - padY * 2;
 
-  // Preserve geographic aspect ratio (Mercator-ish approximation)
+  // Preserve geographic aspect ratio
   const latMid = ((minLat + maxLat) / 2) * (Math.PI / 180);
   const lngScale = Math.cos(latMid);
   const geoAspect = (spanLng * lngScale) / spanLat;
@@ -72,6 +72,8 @@ export function renderVisualizationFrame({
   progress = 0,
   style = "normal",
   places = [],
+  projector = null,
+  projectedPoints = null,
 }) {
   // Clear and paint deep dark canvas background
   ctx.fillStyle = "#0A0A0C";
@@ -85,7 +87,8 @@ export function renderVisualizationFrame({
     return;
   }
 
-  const project = createProjector(points, width, height, 0.12);
+  const project = projector || createProjector(points, width, height, 0.12);
+  const pts = projectedPoints || points.map((p) => project(p));
 
   // Subtle background coordinate grid lines
   drawSubtleGrid(ctx, width, height);
@@ -93,58 +96,46 @@ export function renderVisualizationFrame({
   const clampedProgress = Math.max(0, Math.min(1, progress));
   const totalPoints = points.length;
 
-  // Compute smooth sub-pixel interpolated head point
-  let activePoints = [];
-  let headCoord = points[0];
-  let headAngle = 0;
-
-  if (totalPoints === 1) {
-    activePoints = [points[0]];
-    headCoord = points[0];
-  } else {
-    const exactIndex = clampedProgress * (totalPoints - 1);
-    const baseIdx = Math.floor(exactIndex);
-    const frac = exactIndex - baseIdx;
-
-    const basePoints = points.slice(0, baseIdx + 1);
-
-    if (baseIdx < totalPoints - 1) {
-      const p1 = points[baseIdx];
-      const p2 = points[baseIdx + 1];
-      headCoord = {
-        lat: p1.lat + (p2.lat - p1.lat) * frac,
-        lng: p1.lng + (p2.lng - p1.lng) * frac,
-        time: p1.time || p2.time,
-      };
-
-      const pt1 = project(p1);
-      const pt2 = project(p2);
-      headAngle = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
-
-      activePoints = [...basePoints, headCoord];
-    } else {
-      headCoord = points[totalPoints - 1];
-      activePoints = points;
-      if (totalPoints > 1) {
-        const pt1 = project(points[totalPoints - 2]);
-        const pt2 = project(points[totalPoints - 1]);
-        headAngle = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
-      }
-    }
-  }
-
   // 1. Draw entire faint route background (history path)
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
   ctx.lineWidth = Math.max(2, width * 0.003);
   ctx.beginPath();
-  for (let i = 0; i < points.length; i++) {
-    const pt = project(points[i]);
-    if (i === 0) ctx.moveTo(pt.x, pt.y);
-    else ctx.lineTo(pt.x, pt.y);
+  for (let i = 0; i < pts.length; i++) {
+    if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
+    else ctx.lineTo(pts[i].x, pts[i].y);
   }
   ctx.stroke();
+
+  // Compute smooth sub-pixel interpolated head point
+  let headX = pts[0].x;
+  let headY = pts[0].y;
+  let headAngle = 0;
+  let activeCount = 1;
+
+  if (totalPoints > 1) {
+    const exactIndex = clampedProgress * (totalPoints - 1);
+    const baseIdx = Math.floor(exactIndex);
+    const frac = exactIndex - baseIdx;
+
+    activeCount = baseIdx + 1;
+
+    if (baseIdx < totalPoints - 1) {
+      const pt1 = pts[baseIdx];
+      const pt2 = pts[baseIdx + 1];
+      headX = pt1.x + (pt2.x - pt1.x) * frac;
+      headY = pt1.y + (pt2.y - pt1.y) * frac;
+      headAngle = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
+    } else {
+      headX = pts[totalPoints - 1].x;
+      headY = pts[totalPoints - 1].y;
+      const pt1 = pts[totalPoints - 2];
+      const pt2 = pts[totalPoints - 1];
+      headAngle = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
+      activeCount = totalPoints;
+    }
+  }
 
   // 2. Style-specific active route rendering
   if (style === "travel") {
@@ -155,22 +146,22 @@ export function renderVisualizationFrame({
     ctx.strokeStyle = "#64D2FF";
     ctx.lineWidth = Math.max(3, width * 0.0045);
     ctx.beginPath();
-    for (let i = 0; i < activePoints.length; i++) {
-      const pt = project(activePoints[i]);
-      if (i === 0) ctx.moveTo(pt.x, pt.y);
-      else ctx.lineTo(pt.x, pt.y);
+    for (let i = 0; i < activeCount; i++) {
+      if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
+      else ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    if (activeCount < totalPoints) {
+      ctx.lineTo(headX, headY);
     }
     ctx.stroke();
     ctx.restore();
 
-    // Subtle waypoint circles at intervals
+    // Waypoint circles along traveled route
     const step = Math.max(1, Math.floor(totalPoints / 25));
-    const currentBaseIdx = Math.floor(clampedProgress * (totalPoints - 1));
-    for (let i = 0; i <= currentBaseIdx; i += step) {
-      const pt = project(points[i]);
-      ctx.fillStyle = "rgba(100, 210, 255, 0.3)";
+    for (let i = 0; i < activeCount; i += step) {
+      ctx.fillStyle = "rgba(100, 210, 255, 0.35)";
       ctx.beginPath();
-      ctx.arc(pt.x, pt.y, Math.max(4, width * 0.006), 0, Math.PI * 2);
+      ctx.arc(pts[i].x, pts[i].y, Math.max(4, width * 0.006), 0, Math.PI * 2);
       ctx.fill();
     }
   } else if (style === "transport") {
@@ -178,10 +169,12 @@ export function renderVisualizationFrame({
     ctx.strokeStyle = "#30D158";
     ctx.lineWidth = Math.max(3.5, width * 0.005);
     ctx.beginPath();
-    for (let i = 0; i < activePoints.length; i++) {
-      const pt = project(activePoints[i]);
-      if (i === 0) ctx.moveTo(pt.x, pt.y);
-      else ctx.lineTo(pt.x, pt.y);
+    for (let i = 0; i < activeCount; i++) {
+      if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
+      else ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    if (activeCount < totalPoints) {
+      ctx.lineTo(headX, headY);
     }
     ctx.stroke();
   } else if (style === "vehicle") {
@@ -189,10 +182,12 @@ export function renderVisualizationFrame({
     ctx.strokeStyle = "#FF9F0A";
     ctx.lineWidth = Math.max(3, width * 0.0045);
     ctx.beginPath();
-    for (let i = 0; i < activePoints.length; i++) {
-      const pt = project(activePoints[i]);
-      if (i === 0) ctx.moveTo(pt.x, pt.y);
-      else ctx.lineTo(pt.x, pt.y);
+    for (let i = 0; i < activeCount; i++) {
+      if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
+      else ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    if (activeCount < totalPoints) {
+      ctx.lineTo(headX, headY);
     }
     ctx.stroke();
   } else {
@@ -200,31 +195,29 @@ export function renderVisualizationFrame({
     ctx.strokeStyle = "#007AFF";
     ctx.lineWidth = Math.max(3, width * 0.004);
     ctx.beginPath();
-    for (let i = 0; i < activePoints.length; i++) {
-      const pt = project(activePoints[i]);
-      if (i === 0) ctx.moveTo(pt.x, pt.y);
-      else ctx.lineTo(pt.x, pt.y);
+    for (let i = 0; i < activeCount; i++) {
+      if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
+      else ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    if (activeCount < totalPoints) {
+      ctx.lineTo(headX, headY);
     }
     ctx.stroke();
   }
 
   // 3. Draw start point pin
-  if (points.length > 0) {
-    const startPt = project(points[0]);
+  if (pts.length > 0) {
     ctx.fillStyle = "#30D158";
     ctx.beginPath();
-    ctx.arc(startPt.x, startPt.y, Math.max(4, width * 0.005), 0, Math.PI * 2);
+    ctx.arc(pts[0].x, pts[0].y, Math.max(4, width * 0.005), 0, Math.PI * 2);
     ctx.fill();
   }
 
   // 4. Draw Current Position Indicator / Vehicle Head with smooth interpolation
-  const currentPt = project(headCoord);
-
-  if (style === "vehicle" && activePoints.length > 1) {
-    drawVehicleMarker(ctx, currentPt.x, currentPt.y, headAngle, width);
+  if (style === "vehicle" && totalPoints > 1) {
+    drawVehicleMarker(ctx, headX, headY, headAngle, width);
   } else {
-    // Standard sleek tracer head
-    drawPulseMarker(ctx, currentPt.x, currentPt.y, style, width);
+    drawPulseMarker(ctx, headX, headY, style, width);
   }
 }
 

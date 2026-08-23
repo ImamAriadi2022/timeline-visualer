@@ -1,16 +1,12 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Dialog } from "@/shared/components/Dialog";
 import { Button } from "@/shared/components/Button";
-import { DownloadIcon, SparklesIcon } from "@/shared/components/Icons";
+import { DownloadIcon, CheckIcon } from "@/shared/components/Icons";
 import { ASPECT_RATIOS } from "@/shared/constants/aspect-ratios";
+import { VISUALIZATION_STYLES } from "@/shared/constants/styles";
+import { renderVisualizationFrame, createProjector } from "@/features/visualization/services/map-renderer.service";
 import { renderTimelineVideo } from "../services/video-export.service";
-
-const FPS_OPTIONS = [
-  { id: 25, label: "25 FPS", sublabel: "Standar" },
-  { id: 30, label: "30 FPS", sublabel: "Halus" },
-  { id: 60, label: "60 FPS", sublabel: "Sangat Mulus ✨" },
-];
 
 export function ExportModal({
   isOpen,
@@ -18,15 +14,78 @@ export function ExportModal({
   points = [],
   places = [],
   style = "normal",
+  aspectRatio = "square",
+  duration = 10,
+  fps = 60,
   isUnlocked = false,
   onRequestUnlock,
 }) {
-  const [aspect, setAspect] = useState("square");
-  const [duration, setDuration] = useState(10);
-  const [fps, setFps] = useState(60);
+  const previewCanvasRef = useRef(null);
+  const animRef = useRef(null);
+
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isDone, setIsDone] = useState(false);
   const [error, setError] = useState(null);
+
+  // Aspect ratio styling for preview container
+  const aspectConfig = ASPECT_RATIOS[aspectRatio] || ASPECT_RATIOS.square;
+  const styleConfig = VISUALIZATION_STYLES[style] || VISUALIZATION_STYLES.normal;
+
+  // Animate live preview inside modal
+  useEffect(() => {
+    if (!isOpen || !previewCanvasRef.current || points.length === 0) return;
+
+    const canvas = previewCanvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    let width = 540;
+    let height = 540;
+    if (aspectRatio === "portrait") {
+      width = 360;
+      height = 640;
+    } else if (aspectRatio === "landscape") {
+      width = 640;
+      height = 360;
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const projector = createProjector(points, width, height, 0.12);
+    const projectedPoints = points.map((p) => projector(p));
+
+    let startTime = performance.now();
+    const cycleDurationMs = Math.min(8000, duration * 1000);
+
+    function animate(now) {
+      const elapsed = (now - startTime) % cycleDurationMs;
+      const animProgress = elapsed / cycleDurationMs;
+
+      renderVisualizationFrame({
+        ctx,
+        width,
+        height,
+        points,
+        places,
+        progress: animProgress,
+        style,
+        projector,
+        projectedPoints,
+      });
+
+      animRef.current = requestAnimationFrame(animate);
+    }
+
+    animRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animRef.current) {
+        cancelAnimationFrame(animRef.current);
+        animRef.current = null;
+      }
+    };
+  }, [isOpen, points, places, style, aspectRatio, duration]);
 
   const handleStartExport = async () => {
     if (!isUnlocked) {
@@ -34,14 +93,10 @@ export function ExportModal({
       return;
     }
 
-    if (duration < 5 || duration > 90) {
-      setError("Silakan pilih durasi video antara 5 hingga 90 detik.");
-      return;
-    }
-
     setError(null);
     setIsRendering(true);
     setProgress(0);
+    setIsDone(false);
 
     try {
       const { blob, mimeType } = await renderTimelineVideo({
@@ -49,7 +104,7 @@ export function ExportModal({
         places,
         style,
         durationSeconds: Number(duration),
-        aspectRatio: aspect,
+        aspectRatio,
         fps: Number(fps),
         onProgress: setProgress,
       });
@@ -65,12 +120,15 @@ export function ExportModal({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      onClose?.();
+      setIsDone(true);
+      setTimeout(() => {
+        onClose?.();
+        setIsDone(false);
+      }, 1500);
     } catch (err) {
       setError(err.message || "Gagal merender video.");
     } finally {
       setIsRendering(false);
-      setProgress(0);
     }
   };
 
@@ -78,99 +136,40 @@ export function ExportModal({
     <Dialog
       isOpen={isOpen}
       onClose={() => !isRendering && onClose?.()}
-      title="Ekspor Video Perjalanan"
-      subtitle="EKSPOR"
-      maxWidth="max-w-lg"
+      title="Pratinjau & Ekspor Video"
+      subtitle="EKSPOR VIDEO MP4"
+      maxWidth="max-w-md"
     >
-      <div className="space-y-5">
-        {/* Aspect Ratio Selector */}
-        <div>
-          <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
-            Format / Rasio Aspek
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {Object.values(ASPECT_RATIOS).map((item) => {
-              const selected = aspect === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={isRendering}
-                  onClick={() => setAspect(item.id)}
-                  className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
-                    selected
-                      ? "bg-[#2C2C2E] border-[#007AFF] text-white shadow-sm"
-                      : "bg-[#1C1C1E] border-[#38383A] text-[#98989D] hover:border-[#6E6E73] hover:text-[#F5F5F7]"
-                  }`}
-                >
-                  <span className="text-sm font-bold">{item.label}</span>
-                  <span className="text-[10px] text-[#6E6E73] mt-0.5">
-                    {item.sublabel}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+      <div className="space-y-4">
+        {/* Settings Summary Badge */}
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#98989D] pb-1">
+          <span className="px-2.5 py-1 rounded-lg bg-[#2C2C2E] font-semibold text-[#F5F5F7]">
+            {aspectConfig.label} ({aspectConfig.ratio})
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-[#2C2C2E] font-semibold text-[#F5F5F7]">
+            {duration} Detik
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-[#2C2C2E] font-semibold text-[#F5F5F7]">
+            {fps} FPS
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-[#2C2C2E] font-semibold text-[#007AFF]">
+            Gaya {styleConfig.label}
+          </span>
         </div>
 
-        {/* Framerate (FPS) Selector */}
-        <div>
-          <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
-            Frame Rate (Kelancaran Animasi)
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {FPS_OPTIONS.map((item) => {
-              const selected = fps === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={isRendering}
-                  onClick={() => setFps(item.id)}
-                  className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
-                    selected
-                      ? "bg-[#2C2C2E] border-[#007AFF] text-white shadow-sm"
-                      : "bg-[#1C1C1E] border-[#38383A] text-[#98989D] hover:border-[#6E6E73] hover:text-[#F5F5F7]"
-                  }`}
-                >
-                  <span className="text-sm font-bold">{item.label}</span>
-                  <span className="text-[10px] text-[#6E6E73] mt-0.5">
-                    {item.sublabel}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        {/* Live Video Preview Box */}
+        <div className="w-full flex items-center justify-center p-3 bg-[#000000] border border-[#2C2C2E] rounded-2xl overflow-hidden min-h-[260px] max-h-[360px]">
+          <canvas
+            ref={previewCanvasRef}
+            className="rounded-xl shadow-2xl max-w-full max-h-[320px] object-contain"
+          />
         </div>
 
-        {/* Duration Slider */}
-        <div>
-          <div className="flex items-center justify-between text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
-            <span>Durasi Video</span>
-            <span className="text-white font-mono text-sm">{duration} detik</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-[#6E6E73]">5s</span>
-            <input
-              type="range"
-              min="5"
-              max="90"
-              step="1"
-              value={duration}
-              disabled={isRendering}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              className="w-full h-2 bg-[#2C2C2E] rounded-lg appearance-none cursor-pointer accent-[#007AFF]"
-            />
-            <span className="text-xs text-[#6E6E73]">90s</span>
-          </div>
-        </div>
-
-        {/* Render Progress or Error */}
+        {/* Render Progress or Status */}
         {isRendering && (
           <div className="p-4 rounded-xl bg-[#2C2C2E]/60 border border-[#38383A] space-y-2">
             <div className="flex items-center justify-between text-xs text-[#F5F5F7]">
-              <span>Merender {fps} FPS secara mulus di browser...</span>
+              <span>Merender {fps} FPS ({duration}s) secara lokal...</span>
               <span className="font-mono font-semibold text-[#007AFF]">
                 {progress}%
               </span>
@@ -184,13 +183,20 @@ export function ExportModal({
           </div>
         )}
 
+        {isDone && (
+          <div className="p-3.5 rounded-xl bg-[#30D158]/10 border border-[#30D158]/20 text-[#30D158] text-xs flex items-center gap-2">
+            <CheckIcon className="w-4 h-4" />
+            <span>Video berhasil dibuat dan diunduh ke perangkat Anda!</span>
+          </div>
+        )}
+
         {error && (
           <div className="p-3.5 rounded-xl bg-[#FF453A]/10 border border-[#FF453A]/20 text-[#FF453A] text-xs">
             {error}
           </div>
         )}
 
-        {/* Action Button */}
+        {/* Action Buttons */}
         <div className="pt-2 flex items-center justify-end gap-3">
           <Button
             variant="secondary"
@@ -208,8 +214,10 @@ export function ExportModal({
           >
             {isRendering
               ? `Merender (${progress}%)`
+              : isDone
+              ? "Selesai!"
               : isUnlocked
-              ? `Ekspor Video (${fps} FPS)`
+              ? "Mulai Ekspor Video (MP4)"
               : "Buka Kunci Ekspor MP4"}
           </Button>
         </div>
