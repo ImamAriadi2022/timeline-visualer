@@ -81,7 +81,7 @@ export function renderVisualizationFrame({
     ctx.fillStyle = "#6E6E73";
     ctx.font = "14px -apple-system, BlinkMacSystemFont, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("No route points to visualize", width / 2, height / 2);
+    ctx.fillText("Belum ada titik rute untuk divisualisasikan", width / 2, height / 2);
     return;
   }
 

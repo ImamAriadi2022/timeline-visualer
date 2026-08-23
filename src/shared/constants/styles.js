@@ -2,22 +2,22 @@ export const VISUALIZATION_STYLES = {
   normal: {
     id: "normal",
     label: "Normal",
-    description: "Clean minimal polyline with smooth path tracing",
+    description: "Garis rute minimalis dan elegan dengan penelusuran halus",
   },
   travel: {
     id: "travel",
-    label: "Travel",
-    description: "Cinematic journey tracing with waypoint reveals",
+    label: "Perjalanan",
+    description: "Penelusuran rute sinematik dengan efek cahaya dan titik singgah",
   },
   transport: {
     id: "transport",
-    label: "Transport",
-    description: "Distinct mode colors & vector styling for transit",
+    label: "Transportasi",
+    description: "Gaya warna kontras tinggi untuk jalur transit dan rute bepergian",
   },
   vehicle: {
     id: "vehicle",
-    label: "Vehicle",
-    description: "Direction-aligned vehicle indicator along the path",
+    label: "Kendaraan",
+    description: "Indikator kendaraan yang bergerak mengikuti arah dan sudut rute",
   },
 };
 

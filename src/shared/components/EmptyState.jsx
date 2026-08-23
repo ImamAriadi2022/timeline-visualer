@@ -3,9 +3,9 @@ import { Button } from "./Button";
 import { UploadIcon } from "./Icons";
 
 export function EmptyState({
-  title = "No Timeline Loaded",
-  description = "Import your Google Maps Timeline export to begin visualizing your journey on the map.",
-  actionLabel = "Import Timeline",
+  title = "Belum Ada Linimasa Dimuat",
+  description = "Impor file ekspor Google Maps Timeline Anda untuk mulai memvisualisasikan perjalanan Anda di peta.",
+  actionLabel = "Impor Linimasa",
   onAction,
   icon = null,
 }) {

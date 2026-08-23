@@ -14,13 +14,13 @@ export async function renderTimelineVideo({
   onProgress,
 }) {
   if (!points || points.length === 0) {
-    throw new Error("No route points available to export.");
+    throw new Error("Tidak ada titik rute yang tersedia untuk diekspor.");
   }
 
   const mimeType = getSupportedVideoMimeType();
   if (!mimeType) {
     throw new Error(
-      "Your browser does not support in-browser video recording. Please use modern Chrome, Edge, or Safari."
+      "Browser Anda tidak mendukung perekaman video internal. Silakan gunakan Chrome, Edge, atau Safari versi terbaru."
     );
   }
 
@@ -56,7 +56,7 @@ export async function renderTimelineVideo({
       resolve({ blob, mimeType: blobType });
     };
     recorder.onerror = (e) => {
-      reject(new Error("Video encoder encountered an error: " + (e.error?.message || "unknown")));
+      reject(new Error("Perekam video browser mengalami kesalahan: " + (e.error?.message || "tidak diketahui")));
     };
   });
 

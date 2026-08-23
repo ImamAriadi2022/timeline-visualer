@@ -63,7 +63,7 @@ export function TimelineMap({
       <canvas
         ref={canvasRef}
         className="w-full h-full block"
-        aria-label="Interactive timeline map animation"
+        aria-label="Animasi peta rute perjalanan interaktif"
       />
 
       {/* Floating HUD Chip */}
@@ -72,7 +72,7 @@ export function TimelineMap({
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#007AFF] animate-ping" />
             <span className="font-medium">
-              {currentPoint.time ? formatDate(currentPoint.time) : "Journey Point"}
+              {currentPoint.time ? formatDate(currentPoint.time) : "Titik Perjalanan"}
             </span>
           </div>
           <span className="text-[#6E6E73] font-mono text-[11px]">

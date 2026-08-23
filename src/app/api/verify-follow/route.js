@@ -18,9 +18,9 @@ export async function POST(request) {
     });
 
     return Response.json(result, {
-      status: result.reason?.includes("smaller than")
+      status: result.reason?.includes("lebih kecil")
         ? 400
-        : result.reason?.includes("missing") || result.reason?.includes("not configured")
+        : result.reason?.includes("belum disetel") || result.reason?.includes("belum dikonfigurasi")
         ? 503
         : 200,
     });
@@ -28,7 +28,7 @@ export async function POST(request) {
     return Response.json(
       {
         valid: false,
-        reason: "We couldn't verify this screenshot. Upload a sharper screenshot showing the account and Following.",
+        reason: "Gagal memverifikasi tangkapan layar ini. Unggah screenshot yang lebih tajam memperlihatkan akun dan status Mengikuti (Following).",
       },
       { status: 502 }
     );

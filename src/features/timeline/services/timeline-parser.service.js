@@ -16,7 +16,7 @@ function parseIsoTime(input) {
  */
 export function parseTimelineJson(rawInput) {
   if (!rawInput) {
-    throw new Error("Empty Timeline data. Please choose a valid JSON file.");
+    throw new Error("Data Linimasa kosong. Silakan pilih file JSON yang valid.");
   }
 
   let data = rawInput;
@@ -24,7 +24,7 @@ export function parseTimelineJson(rawInput) {
     try {
       data = JSON.parse(rawInput);
     } catch {
-      throw new Error("Invalid JSON format. Please select an uncorrupted Google Maps Timeline file.");
+      throw new Error("Format JSON tidak valid. Pastikan file ekspor Google Maps Timeline tidak rusak.");
     }
   }
 
@@ -246,7 +246,7 @@ export function parseTimelineJson(rawInput) {
 
   if (extractedPoints.length === 0) {
     throw new Error(
-      "We couldn't recognize this Timeline file or find usable location coordinates. Export Location History JSON from Google Maps and try again."
+      "Format file Linimasa ini tidak dikenali atau tidak memiliki koordinat lokasi. Ekspor kembali JSON Linimasa dari Google Maps dan coba lagi."
     );
   }
 

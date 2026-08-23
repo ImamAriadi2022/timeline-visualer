@@ -1,8 +1,8 @@
 import React from "react";
 
 export function LoadingState({
-  title = "Loading...",
-  message = "Preparing your data locally",
+  title = "Memuat...",
+  message = "Menyiapkan data Anda secara lokal",
   progress = null,
 }) {
   return (

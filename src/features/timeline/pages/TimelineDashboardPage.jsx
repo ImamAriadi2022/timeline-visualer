@@ -106,7 +106,7 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-[#98989D] hover:text-[#F5F5F7] hover:bg-white/5 transition-colors"
           >
             <UploadIcon className="w-3.5 h-3.5" />
-            <span>Import New</span>
+            <span>Impor Baru</span>
           </button>
 
           <button
@@ -115,7 +115,7 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-[#98989D] hover:text-[#F5F5F7] hover:bg-white/5 transition-colors"
           >
             <HelpIcon className="w-3.5 h-3.5" />
-            <span>Help</span>
+            <span>Bantuan</span>
           </button>
         </div>
       </header>
@@ -159,7 +159,7 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
             {/* Statistics */}
             <div>
               <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2.5">
-                Journey Insights
+                Wawasan Perjalanan
               </label>
               <TimelineStatistics summary={timeline?.summary} />
             </div>
@@ -174,10 +174,10 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
               onClick={handleOpenExport}
               icon={<DownloadIcon className="w-4 h-4" />}
             >
-              Export MP4 Video
+              Ekspor Video MP4
             </Button>
             <p className="text-[11px] text-[#6E6E73] text-center mt-2.5">
-              Render in 9:16, 1:1, or 16:9 on your browser
+              Render dalam 9:16, 1:1, atau 16:9 di browser Anda
             </p>
           </div>
         </aside>

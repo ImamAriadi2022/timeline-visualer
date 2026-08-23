@@ -9,7 +9,7 @@ export function TimelineSummary({ summary, activePoint = null }) {
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-[#30D158] animate-pulse" />
         <span className="font-medium text-[#F5F5F7]">
-          {activePoint?.time ? formatDate(activePoint.time) : "Timeline Active"}
+          {activePoint?.time ? formatDate(activePoint.time) : "Linimasa Aktif"}
         </span>
       </div>
       {activePoint && (

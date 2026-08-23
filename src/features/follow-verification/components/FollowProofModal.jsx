@@ -5,7 +5,9 @@ import { Button } from "@/shared/components/Button";
 import { UploadIcon, ShieldCheckIcon, CheckIcon } from "@/shared/components/Icons";
 import { exportEntitlement } from "../services/entitlement.service";
 
-const TARGET_ACCOUNT = "@timelinevisualizer";
+const TARGET_USERNAME = "imam_dev33";
+const TARGET_ACCOUNT = `@${TARGET_USERNAME}`;
+const INSTAGRAM_URL = "https://www.instagram.com/imam_dev33?igsi=MWF0OWYzdGVmY2N0OQ==";
 
 export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
   const fileInputRef = useRef(null);
@@ -18,17 +20,17 @@ export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setStatusMessage("Please choose a PNG, JPG, or WebP screenshot.");
+      setStatusMessage("Silakan pilih screenshot gambar berformat PNG, JPG, atau WebP.");
       return;
     }
 
     if (file.size > 8 * 1024 * 1024) {
-      setStatusMessage("The screenshot must be smaller than 8 MB.");
+      setStatusMessage("Ukuran screenshot harus lebih kecil dari 8 MB.");
       return;
     }
 
     setIsVerifying(true);
-    setStatusMessage("Verifying Instagram Follow Proof with AI vision...");
+    setStatusMessage("Memverifikasi bukti follow Instagram dengan AI vision...");
 
     try {
       const formData = new FormData();
@@ -44,7 +46,7 @@ export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
       if (data.valid) {
         exportEntitlement.unlock();
         setIsSuccess(true);
-        setStatusMessage("Verified! Video export is now unlocked.");
+        setStatusMessage("Berhasil diverifikasi! Fitur ekspor video MP4 kini terbuka.");
         setTimeout(() => {
           onUnlocked?.();
           onClose?.();
@@ -52,11 +54,11 @@ export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
       } else {
         setStatusMessage(
           data.reason ||
-            "We could not verify the follow. Make sure the target account and Following status are clearly visible."
+            `Kami tidak dapat memverifikasi tangkapan layar. Pastikan akun ${TARGET_ACCOUNT} dan status Mengikuti (Following) terlihat jelas.`
         );
       }
     } catch {
-      setStatusMessage("Verification request failed. Please check your connection and try again.");
+      setStatusMessage("Permintaan verifikasi gagal. Silakan periksa koneksi Anda dan coba lagi.");
     } finally {
       setIsVerifying(false);
     }
@@ -66,14 +68,39 @@ export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
     <Dialog
       isOpen={isOpen}
       onClose={() => !isVerifying && onClose?.()}
-      title="Unlock Video Export"
-      subtitle="FOLLOW PROOF"
+      title="Buka Kunci Ekspor Video"
+      subtitle="BUKTI FOLLOW"
       maxWidth="max-w-md"
     >
       <div className="space-y-6">
         <p className="text-sm text-[#98989D] leading-relaxed">
-          Follow <span className="text-white font-semibold">{TARGET_ACCOUNT}</span> on Instagram, then upload a screenshot showing the account and your <span className="text-white font-semibold">Following</span> status.
+          Ikuti (Follow) akun Instagram{" "}
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#007AFF] hover:underline font-semibold"
+          >
+            {TARGET_ACCOUNT}
+          </a>
+          , lalu unggah screenshot yang memperlihatkan akun dan status{" "}
+          <span className="text-white font-semibold">Mengikuti (Following)</span> Anda.
         </p>
+
+        {/* Direct Link to Instagram */}
+        <a
+          href={INSTAGRAM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-[#2C2C2E] hover:bg-[#3A3A3C] border border-[#38383A] text-xs font-semibold text-white transition-colors"
+        >
+          <span>Buka Profil Instagram @{TARGET_USERNAME}</span>
+          <svg className="w-3.5 h-3.5 text-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+        </a>
 
         {/* Upload drop area */}
         <div
@@ -90,7 +117,7 @@ export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
             accept="image/png,image/jpeg,image/webp"
             onChange={handleFileChange}
             className="hidden"
-            aria-label="Upload follow proof screenshot"
+            aria-label="Unggah screenshot bukti follow Instagram"
           />
 
           <div className="w-12 h-12 rounded-xl bg-[#2C2C2E] flex items-center justify-center mb-3">
@@ -105,14 +132,14 @@ export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
 
           <span className="text-sm font-semibold text-white mb-1">
             {isSuccess
-              ? "Follow Verified!"
+              ? "Follow Terverifikasi!"
               : isVerifying
-              ? "Verifying Screenshot..."
-              : "Upload Proof Screenshot"}
+              ? "Memverifikasi Tangkapan Layar..."
+              : "Unggah Bukti Screenshot"}
           </span>
 
           <span className="text-xs text-[#6E6E73]">
-            PNG, JPG, or WebP up to 8 MB
+            PNG, JPG, atau WebP hingga 8 MB
           </span>
         </div>
 
@@ -131,7 +158,7 @@ export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
 
         <div className="flex items-center gap-2 text-[11px] text-[#6E6E73]">
           <ShieldCheckIcon className="w-3.5 h-3.5 text-[#98989D]" />
-          <span>We only inspect the screenshot to verify follow status.</span>
+          <span>Kami hanya memeriksa screenshot untuk validasi status follow.</span>
         </div>
 
         {/* Actions */}
@@ -141,7 +168,7 @@ export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
             disabled={isVerifying}
             onClick={onClose}
           >
-            Close
+            Tutup
           </Button>
 
           <Button
@@ -149,7 +176,7 @@ export function FollowProofModal({ isOpen, onClose, onUnlocked }) {
             disabled={isVerifying || isSuccess}
             onClick={() => fileInputRef.current?.click()}
           >
-            Choose Screenshot
+            Pilih Screenshot
           </Button>
         </div>
       </div>

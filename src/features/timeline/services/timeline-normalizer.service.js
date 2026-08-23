@@ -28,7 +28,7 @@ export function normalizeTimelineData(parsed) {
 
   if (validPoints.length === 0) {
     throw new Error(
-      "This file does not contain usable location points. Try a Google Maps Timeline export with location history included."
+      "File ini tidak berisi titik lokasi yang dapat digunakan. Pastikan ekspor Google Maps Timeline menyertakan riwayat lokasi."
     );
   }
 

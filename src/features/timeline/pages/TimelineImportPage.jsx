@@ -30,7 +30,7 @@ export function TimelineImportPage({ onTimelineLoaded }) {
     } catch (err) {
       setError(
         err.message ||
-          "We couldn't read this Timeline file. Make sure you've selected your Google Maps export."
+          "Gagal membaca file Linimasa ini. Pastikan Anda memilih file ekspor Google Maps Timeline yang valid."
       );
     } finally {
       setIsLoading(false);
@@ -46,7 +46,7 @@ export function TimelineImportPage({ onTimelineLoaded }) {
             TIMELINE VISUALIZER
           </span>
           <span className="text-xs text-[#6E6E73]">·</span>
-          <span className="text-xs text-[#98989D]">LOCAL-FIRST</span>
+          <span className="text-xs text-[#98989D]">LOKAL & PRIVAT</span>
         </div>
       </header>
 
@@ -54,13 +54,13 @@ export function TimelineImportPage({ onTimelineLoaded }) {
       <main className="max-w-xl w-full mx-auto my-auto py-8">
         <div className="text-center mb-8">
           <p className="text-xs font-semibold tracking-wider text-[#007AFF] uppercase mb-2">
-            01 / IMPORT
+            01 / IMPOR
           </p>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-4">
-            Bring your history into motion.
+            Hidupkan riwayat perjalanan Anda.
           </h1>
           <p className="text-[#98989D] text-base leading-relaxed max-w-md mx-auto">
-            Choose your Google Maps Timeline export JSON. All processing, parsing, and rendering happen locally on your device.
+            Pilih file ekspor Google Maps Timeline JSON Anda. Semua proses parsing dan rendering berlangsung secara lokal di browser Anda.
           </p>
         </div>
 
@@ -73,13 +73,13 @@ export function TimelineImportPage({ onTimelineLoaded }) {
         {/* Privacy Note */}
         <div className="mt-8 flex items-center justify-center gap-2 text-xs text-[#6E6E73]">
           <ShieldCheckIcon className="w-4 h-4 text-[#30D158]" />
-          <span>Private by default: No location or GPS data is sent to any server.</span>
+          <span>Privat secara default: Tidak ada data lokasi atau GPS yang dikirim ke server.</span>
         </div>
       </main>
 
       {/* Footer */}
       <footer className="text-center text-xs text-[#6E6E73]">
-        Works with all modern Google Maps Timeline & Location History JSON exports
+        Mendukung format Google Maps Timeline & Location History JSON modern
       </footer>
     </div>
   );

@@ -8,7 +8,7 @@ export function StyleSelector({ currentStyle = "normal", onStyleChange }) {
   return (
     <div className="w-full">
       <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2.5">
-        Visualization Style
+        Gaya Visualisasi
       </label>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl">

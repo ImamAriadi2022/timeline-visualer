@@ -2,14 +2,14 @@ export const ASPECT_RATIOS = {
   portrait: {
     id: "portrait",
     label: "9:16",
-    sublabel: "Stories / Reels",
+    sublabel: "Stories / Reels / TikTok",
     width: 1080,
     height: 1920,
   },
   square: {
     id: "square",
     label: "1:1",
-    sublabel: "Feed Post",
+    sublabel: "Feed Instagram",
     width: 1080,
     height: 1080,
   },

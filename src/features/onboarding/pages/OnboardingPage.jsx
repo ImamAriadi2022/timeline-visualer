@@ -6,28 +6,28 @@ import { onboardingState } from "../services/onboarding.service";
 
 const SLIDES = [
   {
-    eyebrow: "01 / DISCOVERY",
-    title: "Your journey, visualized.",
+    eyebrow: "01 / PENJELAJAHAN",
+    title: "Perjalanan Anda, divisualisasikan.",
     description:
-      "Transform your raw Google Maps Timeline export into a smooth, cinematic route animation on your map. Local-first, private by default.",
+      "Ubah data ekspor Google Maps Timeline Anda menjadi animasi rute sinematik di peta. Berjalan lokal di perangkat, aman dan privat.",
   },
   {
-    eyebrow: "02 / PRIVACY FIRST",
-    title: "100% On-Device.",
+    eyebrow: "02 / PRIVASI TERJAGA",
+    title: "100% Di Perangkat Anda.",
     description:
-      "Your GPS history, visits, and timeline stay on your browser. We never send your location data to any cloud or backend server.",
+      "Riwayat GPS, tempat kunjungan, dan linimasa Anda hanya diproses di browser Anda. Kami tidak pernah mengirim data lokasi ke server mana pun.",
   },
   {
-    eyebrow: "03 / 4 STORY STYLES",
-    title: "Craft your aesthetic.",
+    eyebrow: "03 / 4 PILIHAN GAYA",
+    title: "Ekspresikan Cerita Anda.",
     description:
-      "Choose from Normal, Travel, Transport, and Vehicle styles to bring out the unique rhythm of your trips and commutes.",
+      "Pilih dari gaya Normal, Perjalanan, Transportasi, dan Kendaraan untuk menghidupkan setiap jejak langkah dan momen perjalanan Anda.",
   },
   {
-    eyebrow: "04 / SHARE & EXPORT",
-    title: "Export crisp MP4 videos.",
+    eyebrow: "04 / BAGIKAN & EKSPOR",
+    title: "Ekspor Video MP4 Berkualitas.",
     description:
-      "Render in 9:16 vertical, 1:1 square, or 16:9 landscape video for social stories, reels, or trip documentaries.",
+      "Render dalam format vertikal 9:16, persegi 1:1, atau lanskap 16:9 untuk story media sosial, reels, maupun arsip perjalanan Anda.",
   },
 ];
 
@@ -65,7 +65,7 @@ export function OnboardingPage({ onFinish }) {
           onClick={handleComplete}
           className="text-xs text-[#98989D] hover:text-[#F5F5F7] transition-colors py-1 px-2"
         >
-          Skip intro
+          Lewati pengenalan
         </button>
       </header>
 
@@ -94,7 +94,7 @@ export function OnboardingPage({ onFinish }) {
                   ? "w-8 bg-[#007AFF]"
                   : "w-2 bg-[#2C2C2E] hover:bg-[#38383A]"
               }`}
-              aria-label={`Go to slide ${idx + 1}`}
+              aria-label={`Buka slide ${idx + 1}`}
             />
           ))}
         </div>
@@ -107,15 +107,15 @@ export function OnboardingPage({ onFinish }) {
             onClick={handleNext}
             icon={<ArrowRightIcon className="w-4 h-4" />}
           >
-            {currentSlide === SLIDES.length - 1 ? "Get Started" : "Continue"}
+            {currentSlide === SLIDES.length - 1 ? "Mulai Visualisasi" : "Lanjutkan"}
           </Button>
         </div>
       </main>
 
       {/* Footer */}
       <footer className="text-xs text-[#6E6E73] flex items-center justify-between">
-        <span>LOCAL-FIRST · PRIVATE BY DEFAULT</span>
-        <span>STEP {currentSlide + 1} OF {SLIDES.length}</span>
+        <span>LOCAL-FIRST · PRIVAT SECARA DEFAULT</span>
+        <span>LANGKAH {currentSlide + 1} DARI {SLIDES.length}</span>
       </footer>
     </div>
   );

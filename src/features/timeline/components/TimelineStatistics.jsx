@@ -7,24 +7,24 @@ export function TimelineStatistics({ summary, className = "" }) {
 
   const stats = [
     {
-      label: "Locations",
+      label: "Titik Lokasi",
       value: formatNumber(summary.locations),
-      detail: "recorded GPS points",
+      detail: "koordinat GPS tercatat",
     },
     {
-      label: "Total Distance",
+      label: "Total Jarak",
       value: formatDistance(summary.distance),
-      detail: "calculated route span",
+      detail: "kalkulasi bentang rute",
     },
     {
-      label: "Places Visited",
+      label: "Tempat Dikunjungi",
       value: formatNumber(summary.places),
-      detail: "stops & destinations",
+      detail: "lokasi & destinasi",
     },
     {
-      label: "Journeys",
+      label: "Segmen Perjalanan",
       value: formatNumber(summary.journeys),
-      detail: "movement segments",
+      detail: "riwayat pergerakan",
     },
   ];
 
@@ -52,7 +52,7 @@ export function TimelineStatistics({ summary, className = "" }) {
       </div>
 
       <div className="px-3.5 py-2.5 rounded-xl bg-[#2C2C2E]/30 border border-[#38383A]/40 flex items-center justify-between text-xs">
-        <span className="text-[#98989D]">Date Range</span>
+        <span className="text-[#98989D]">Rentang Tanggal</span>
         <span className="font-medium text-[#F5F5F7]">
           {formatDateRange(summary.start, summary.end)}
         </span>

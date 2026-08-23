@@ -36,12 +36,12 @@ export function TimelineUploader({ onFileSelected, isLoading = false, error = nu
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith(".json") && file.type !== "application/json") {
-      onFileSelected?.(null, "Please choose a valid JSON file exported from Google Maps Timeline.");
+      onFileSelected?.(null, "Silakan pilih file JSON yang valid dari ekspor Google Maps Timeline.");
       return;
     }
 
     if (file.size > 100 * 1024 * 1024) {
-      onFileSelected?.(null, "File is larger than 100 MB. Please provide a smaller Timeline export.");
+      onFileSelected?.(null, "Ukuran file lebih besar dari 100 MB. Silakan gunakan file ekspor yang lebih kecil.");
       return;
     }
 
@@ -67,7 +67,7 @@ export function TimelineUploader({ onFileSelected, isLoading = false, error = nu
           accept="application/json,.json"
           onChange={handleFileInputChange}
           className="hidden"
-          aria-label="Upload Google Maps Timeline JSON file"
+          aria-label="Unggah file JSON Google Maps Timeline"
         />
 
         <div className="w-16 h-16 rounded-2xl bg-[#2C2C2E] group-hover:bg-[#3A3A3C] flex items-center justify-center text-[#F5F5F7] mb-5 transition-colors shadow-inner">
@@ -75,15 +75,15 @@ export function TimelineUploader({ onFileSelected, isLoading = false, error = nu
         </div>
 
         <h3 className="text-xl sm:text-2xl font-semibold text-white tracking-tight mb-2 text-center">
-          {isLoading ? "Reading your Timeline..." : "Import your Timeline"}
+          {isLoading ? "Membaca Linimasa Anda..." : "Impor Linimasa Anda"}
         </h3>
 
         <p className="text-sm text-[#98989D] text-center max-w-sm mb-6 leading-relaxed">
-          Drag & drop your Google Maps export JSON here, or click to browse. Data never leaves your device.
+          Tarik & lepas file JSON ekspor Google Maps Anda ke sini, atau klik untuk memilih file. Data tidak pernah meninggalkan perangkat Anda.
         </p>
 
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2C2C2E] border border-[#38383A] text-xs font-medium text-[#F5F5F7] group-hover:bg-[#3A3A3C] transition-colors">
-          <span>Choose File</span>
+          <span>Pilih File</span>
           <span className="text-[#6E6E73]">·</span>
           <span className="text-[#007AFF]">JSON</span>
         </div>

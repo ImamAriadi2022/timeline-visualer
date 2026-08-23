@@ -9,7 +9,7 @@ export function formatDate(isoString, options = {}) {
     day: "numeric",
   };
 
-  return new Intl.DateTimeFormat("en-US", { ...defaultOptions, ...options }).format(date);
+  return new Intl.DateTimeFormat("id-ID", { ...defaultOptions, ...options }).format(date);
 }
 
 export function formatDateTime(isoString) {
@@ -17,7 +17,7 @@ export function formatDateTime(isoString) {
   const date = new Date(isoString);
   if (Number.isNaN(+date)) return "";
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("id-ID", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -26,7 +26,7 @@ export function formatDateTime(isoString) {
 }
 
 export function formatDateRange(startIso, endIso) {
-  if (!startIso && !endIso) return "All Time";
+  if (!startIso && !endIso) return "Sepanjang Waktu";
   if (startIso && !endIso) return formatDate(startIso);
   if (!startIso && endIso) return formatDate(endIso);
 

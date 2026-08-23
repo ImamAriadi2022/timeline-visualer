@@ -28,7 +28,7 @@ export function ExportModal({
     }
 
     if (duration < 5 || duration > 90) {
-      setError("Please choose a duration between 5 and 90 seconds.");
+      setError("Silakan pilih durasi video antara 5 hingga 90 detik.");
       return;
     }
 
@@ -51,7 +51,7 @@ export function ExportModal({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `timeline-journey-${style}-${duration}s.${ext}`;
+      a.download = `animasi-perjalanan-${style}-${duration}s.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -59,7 +59,7 @@ export function ExportModal({
 
       onClose?.();
     } catch (err) {
-      setError(err.message || "Failed to render video.");
+      setError(err.message || "Gagal merender video.");
     } finally {
       setIsRendering(false);
       setProgress(0);
@@ -70,15 +70,15 @@ export function ExportModal({
     <Dialog
       isOpen={isOpen}
       onClose={() => !isRendering && onClose?.()}
-      title="Export Journey Video"
-      subtitle="EXPORT"
+      title="Ekspor Video Perjalanan"
+      subtitle="EKSPOR"
       maxWidth="max-w-lg"
     >
       <div className="space-y-6">
         {/* Aspect Ratio Selector */}
         <div>
           <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2.5">
-            Format / Aspect Ratio
+            Format / Rasio Aspek
           </label>
           <div className="grid grid-cols-3 gap-2.5">
             {Object.values(ASPECT_RATIOS).map((item) => {
@@ -108,8 +108,8 @@ export function ExportModal({
         {/* Duration Slider */}
         <div>
           <div className="flex items-center justify-between text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
-            <span>Video Duration</span>
-            <span className="text-white font-mono text-sm">{duration}s</span>
+            <span>Durasi Video</span>
+            <span className="text-white font-mono text-sm">{duration} detik</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -132,7 +132,7 @@ export function ExportModal({
         {isRendering && (
           <div className="p-4 rounded-xl bg-[#2C2C2E]/60 border border-[#38383A] space-y-2">
             <div className="flex items-center justify-between text-xs text-[#F5F5F7]">
-              <span>Rendering frames locally...</span>
+              <span>Merender frame di browser secara lokal...</span>
               <span className="font-mono font-semibold text-[#007AFF]">
                 {progress}%
               </span>
@@ -159,7 +159,7 @@ export function ExportModal({
             disabled={isRendering}
             onClick={onClose}
           >
-            Cancel
+            Batal
           </Button>
 
           <Button
@@ -169,10 +169,10 @@ export function ExportModal({
             icon={<DownloadIcon className="w-4 h-4" />}
           >
             {isRendering
-              ? `Rendering (${progress}%)`
+              ? `Merender (${progress}%)`
               : isUnlocked
-              ? "Export Video (MP4)"
-              : "Unlock MP4 Export"}
+              ? "Ekspor Video (MP4)"
+              : "Buka Kunci Ekspor MP4"}
           </Button>
         </div>
       </div>

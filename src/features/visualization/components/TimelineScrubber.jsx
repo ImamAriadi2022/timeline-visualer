@@ -30,9 +30,9 @@ export function TimelineScrubber({
           </span>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-[#6E6E73]">
-          <span>{startDate ? formatDate(startDate) : "Start"}</span>
+          <span>{startDate ? formatDate(startDate) : "Mulai"}</span>
           <span>—</span>
-          <span>{endDate ? formatDate(endDate) : "End"}</span>
+          <span>{endDate ? formatDate(endDate) : "Selesai"}</span>
         </div>
       </div>
 
@@ -46,7 +46,7 @@ export function TimelineScrubber({
           value={progress}
           onChange={handleSliderChange}
           className="w-full h-2 bg-[#2C2C2E] rounded-lg appearance-none cursor-pointer accent-[#007AFF] focus:outline-none"
-          aria-label="Timeline progress scrubber"
+          aria-label="Penggeser kemajuan linimasa"
         />
       </div>
 
@@ -57,7 +57,7 @@ export function TimelineScrubber({
             type="button"
             onClick={onTogglePlay}
             className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#007AFF] text-white hover:bg-[#0066d6] active:scale-95 transition-transform"
-            aria-label={isPlaying ? "Pause journey playback" : "Play journey playback"}
+            aria-label={isPlaying ? "Jeda animasi rute" : "Putar animasi rute"}
           >
             {isPlaying ? (
               <PauseIcon className="w-4 h-4" />
@@ -70,7 +70,7 @@ export function TimelineScrubber({
             type="button"
             onClick={onReset}
             className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#2C2C2E] text-[#98989D] hover:text-[#F5F5F7] hover:bg-[#3A3A3C] active:scale-95 transition-all"
-            aria-label="Reset timeline to beginning"
+            aria-label="Kembalikan linimasa ke awal"
           >
             <RotateIcon className="w-4 h-4" />
           </button>

@@ -60,7 +60,7 @@ export function TimelineApp() {
       <div className="min-h-screen bg-[#000000] text-[#F5F5F7] flex items-center justify-center">
         <LoadingState
           title="Timeline Visualizer"
-          message="Loading your local studio..."
+          message="Menyiapkan studio lokal Anda..."
         />
       </div>
     );
