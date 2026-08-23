@@ -5,7 +5,7 @@ import {
 import { getSupportedVideoMimeType } from "./video-encoder.service";
 
 /**
- * Renders the timeline journey to a video Blob with precise duration and frame timing.
+ * Renders the timeline journey to a video Blob with strictly enforced duration.
  */
 export async function renderTimelineVideo({
   points,
@@ -44,11 +44,11 @@ export async function renderTimelineVideo({
   canvas.height = height;
   const ctx = canvas.getContext("2d");
 
-  // Pre-project points once for instantaneous frame rendering
+  // Pre-project points once for instantaneous frame rendering (< 1ms per frame)
   const projector = createProjector(points, width, height, 0.12);
   const projectedPoints = points.map((p) => projector(p));
 
-  // Initial draw
+  // Initial draw at progress 0
   renderVisualizationFrame({
     ctx,
     width,
@@ -89,46 +89,82 @@ export async function renderTimelineVideo({
     }
   };
 
-  const targetFrameCount = Math.max(1, Math.round(durationSeconds * fps));
-  const frameIntervalMs = 1000 / fps;
+  const totalDurationMs = Math.max(5000, Number(durationSeconds) * 1000);
 
-  recorder.start(100);
+  // Start recording
+  recorder.start(200);
 
   const startTime = performance.now();
 
-  for (let frame = 0; frame < targetFrameCount; frame++) {
-    const progress = targetFrameCount > 1 ? frame / (targetFrameCount - 1) : 1;
+  // Run time-driven animation loop for exactly totalDurationMs
+  await new Promise((resolve) => {
+    let isFinished = false;
+    let rafId = null;
+    let fallbackInterval = null;
 
-    renderVisualizationFrame({
-      ctx,
-      width,
-      height,
-      points,
-      places,
-      progress,
-      style,
-      projector,
-      projectedPoints,
-    });
+    function renderStep() {
+      if (isFinished) return;
 
-    if (videoTrack?.requestFrame) {
-      videoTrack.requestFrame();
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(1, elapsed / totalDurationMs);
+
+      renderVisualizationFrame({
+        ctx,
+        width,
+        height,
+        points,
+        places,
+        progress,
+        style,
+        projector,
+        projectedPoints,
+      });
+
+      if (videoTrack?.requestFrame) {
+        videoTrack.requestFrame();
+      }
+
+      onProgress?.(Math.min(100, Math.round(progress * 100)));
+
+      if (elapsed >= totalDurationMs) {
+        isFinished = true;
+        if (rafId) cancelAnimationFrame(rafId);
+        if (fallbackInterval) clearInterval(fallbackInterval);
+
+        // Render final static frame at 100%
+        renderVisualizationFrame({
+          ctx,
+          width,
+          height,
+          points,
+          places,
+          progress: 1,
+          style,
+          projector,
+          projectedPoints,
+        });
+        if (videoTrack?.requestFrame) {
+          videoTrack.requestFrame();
+        }
+
+        resolve();
+      } else {
+        rafId = requestAnimationFrame(renderStep);
+      }
     }
 
-    if (frame % Math.max(1, Math.floor(fps / 5)) === 0 || frame === targetFrameCount - 1) {
-      onProgress?.(Math.round((frame / targetFrameCount) * 100));
-    }
+    rafId = requestAnimationFrame(renderStep);
 
-    // Precise real-time pacing so MediaRecorder matches exact selected duration
-    const targetWallTime = startTime + (frame + 1) * frameIntervalMs;
-    const remainingTime = targetWallTime - performance.now();
-    if (remainingTime > 0) {
-      await new Promise((r) => setTimeout(r, remainingTime));
-    }
-  }
+    // Fallback interval to guarantee progress even if tab background throttles RAF
+    fallbackInterval = setInterval(() => {
+      if (!isFinished && performance.now() - startTime >= totalDurationMs) {
+        renderStep();
+      }
+    }, 100);
+  });
 
-  // Small padding before stopping recorder
-  await new Promise((r) => setTimeout(r, 100));
+  // Hold final frame for 150ms before finalizing
+  await new Promise((r) => setTimeout(r, 150));
   recorder.stop();
 
   return recordingFinished;
