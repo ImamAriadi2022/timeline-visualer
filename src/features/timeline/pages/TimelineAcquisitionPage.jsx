@@ -6,13 +6,14 @@ import {
   SparklesIcon,
   ShieldCheckIcon,
   CheckIcon,
-  HelpIcon,
   RouteIcon,
+  DownloadIcon,
 } from "@/shared/components/Icons";
 import {
   dataAcquisitionService,
   ACQUISITION_STATES,
 } from "../services/data-acquisition.service";
+import { pwaService } from "@/features/pwa/services/pwa.service";
 
 export function TimelineAcquisitionPage({
   onTimelineLoaded,
@@ -21,147 +22,135 @@ export function TimelineAcquisitionPage({
 }) {
   const fileInputRef = useRef(null);
   const [state, setState] = useState(
-    autoDetect ? ACQUISITION_STATES.DETECTING : ACQUISITION_STATES.FALLBACK
+    autoDetect ? ACQUISITION_STATES.DETECTING : ACQUISITION_STATES.IDLE
   );
   const [errorMessage, setErrorMessage] = useState(null);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+  const [canInstallPwa, setCanInstallPwa] = useState(false);
+  const [isExportStepOpen, setIsExportStepOpen] = useState(false);
 
-  // Automatic detection on mount
+  // Check PWA installation and pending Web Share Target on mount
   useEffect(() => {
     let isMounted = true;
 
-    async function runDetection() {
-      if (!autoDetect) {
-        setState(ACQUISITION_STATES.FALLBACK);
-        return;
+    setIsPwaInstalled(pwaService.isStandalone());
+
+    const unsubscribe = pwaService.onInstallableChange((canInstall) => {
+      if (isMounted) {
+        setCanInstallPwa(canInstall);
+        setIsPwaInstalled(pwaService.isStandalone());
       }
+    });
 
-      setState(ACQUISITION_STATES.DETECTING);
-      await new Promise((r) => setTimeout(r, 600));
-
+    async function checkIncomingShareOrStored() {
       try {
-        const storedData = await dataAcquisitionService.detectStoredTimeline();
+        const incoming = await dataAcquisitionService.checkIncomingOrStored();
         if (!isMounted) return;
 
-        if (storedData) {
-          setState(ACQUISITION_STATES.READY);
-          setTimeout(() => {
-            if (isMounted) onTimelineLoaded?.(storedData);
-          }, 700);
-        } else {
-          // If no stored data, transition gracefully to ready-to-acquire fallback
-          setState(ACQUISITION_STATES.FALLBACK);
+        if (incoming) {
+          if (incoming.type === "shared") {
+            // Received via Android Share Sheet Web Share Target
+            const model = await dataAcquisitionService.processSource(
+              incoming.data,
+              (newState) => {
+                if (isMounted) setState(newState);
+              }
+            );
+            setTimeout(() => {
+              if (isMounted) onTimelineLoaded?.(model);
+            }, 600);
+            return;
+          }
+
+          if (incoming.type === "stored" && autoDetect) {
+            setState(ACQUISITION_STATES.READY);
+            setTimeout(() => {
+              if (isMounted) onTimelineLoaded?.(incoming.data);
+            }, 600);
+            return;
+          }
         }
-      } catch {
-        if (isMounted) setState(ACQUISITION_STATES.FALLBACK);
+
+        setState(ACQUISITION_STATES.IDLE);
+      } catch (err) {
+        if (isMounted) {
+          setErrorMessage(err.message || "Data perjalanan belum dapat dibaca.");
+          setState(ACQUISITION_STATES.ERROR);
+        }
       }
     }
 
-    runDetection();
+    checkIncomingShareOrStored();
 
     return () => {
       isMounted = false;
+      unsubscribe();
     };
   }, [autoDetect, onTimelineLoaded]);
+
+  const handleInstallAndConnect = async () => {
+    if (canInstallPwa) {
+      const accepted = await pwaService.promptInstall();
+      if (accepted) {
+        setIsPwaInstalled(true);
+        setIsExportStepOpen(true);
+        return;
+      }
+    }
+    // If browser doesn't trigger prompt or already installed, proceed to step
+    setIsExportStepOpen(true);
+  };
+
+  const handleOpenTimelineSettings = () => {
+    // Open Google Maps Timeline settings
+    window.open("https://www.google.com/maps/timeline", "_blank", "noopener,noreferrer");
+  };
 
   const handleProcessFile = async (file) => {
     if (!file) return;
 
     if (file.size > 100 * 1024 * 1024) {
-      setErrorMessage("Ukuran file terlalu besar (maksimal 100 MB).");
+      setErrorMessage("Ukuran data terlalu besar (maksimal 100 MB).");
       setState(ACQUISITION_STATES.ERROR);
       return;
     }
 
     setErrorMessage(null);
-    setState(ACQUISITION_STATES.PROCESSING);
 
     try {
-      const model = await dataAcquisitionService.processSource(file);
-      setState(ACQUISITION_STATES.READY);
+      const model = await dataAcquisitionService.processSource(
+        file,
+        (newState) => setState(newState)
+      );
       setTimeout(() => {
         onTimelineLoaded?.(model);
-      }, 700);
+      }, 600);
     } catch (err) {
       setErrorMessage(
-        err.message ||
-          "Data perjalanan tidak dapat dibaca dari file ini. Pastikan Anda memilih file riwayat dari Google Maps."
+        err.message || "Data perjalanan belum dapat dibaca. Pastikan file riwayat sesuai."
       );
       setState(ACQUISITION_STATES.ERROR);
     }
   };
 
-  const handleNativeConnect = async () => {
-    setErrorMessage(null);
-    // Attempt modern File System Access API first if available
-    if (typeof window !== "undefined" && typeof window.showOpenFilePicker === "function") {
-      try {
-        setState(ACQUISITION_STATES.ACQUIRING);
-        const result = await dataAcquisitionService.acquireViaNativePicker();
-        if (result) {
-          setState(ACQUISITION_STATES.READY);
-          setTimeout(() => {
-            onTimelineLoaded?.(result);
-          }, 700);
-          return;
-        } else {
-          // Cancelled picker
-          setState(ACQUISITION_STATES.FALLBACK);
-          return;
-        }
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          // Fallback to standard input click
-          fileInputRef.current?.click();
-        } else {
-          setState(ACQUISITION_STATES.FALLBACK);
-        }
-        return;
-      }
-    }
-
-    // Standard native file input trigger
-    fileInputRef.current?.click();
-  };
-
   const handleLoadDemo = async () => {
     setErrorMessage(null);
-    setState(ACQUISITION_STATES.PROCESSING);
+    setState(ACQUISITION_STATES.NORMALIZING);
     try {
       const sample = await dataAcquisitionService.loadSampleDemo();
       setState(ACQUISITION_STATES.READY);
       setTimeout(() => {
         onTimelineLoaded?.(sample);
-      }, 600);
+      }, 500);
     } catch {
       setErrorMessage("Gagal memuat data contoh. Silakan coba lagi.");
       setState(ACQUISITION_STATES.ERROR);
     }
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      handleProcessFile(file);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#000000] text-[#F5F5F7] flex flex-col justify-between p-5 sm:p-8 lg:p-12 select-none">
-      {/* Hidden File Input for Native OS Picker */}
+      {/* Hidden File Input for Fallback Input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -175,7 +164,7 @@ export function TimelineAcquisitionPage({
       />
 
       {/* Top Header */}
-      <header className="flex items-center justify-between max-w-2xl w-full mx-auto">
+      <header className="flex items-center justify-between max-w-xl w-full mx-auto">
         <div className="flex items-center gap-2">
           {onBack && (
             <button
@@ -199,7 +188,7 @@ export function TimelineAcquisitionPage({
       </header>
 
       {/* Main Acquisition Workspace */}
-      <main className="max-w-2xl w-full mx-auto my-auto py-8 flex flex-col items-center justify-center animate-fadeIn">
+      <main className="max-w-xl w-full mx-auto my-auto py-8 flex flex-col items-center justify-center animate-fadeIn">
         {/* 1. DETECTING STATE */}
         {state === ACQUISITION_STATES.DETECTING && (
           <div className="flex flex-col items-center text-center p-8 space-y-4">
@@ -207,170 +196,202 @@ export function TimelineAcquisitionPage({
               <div className="w-7 h-7 rounded-full border-2 border-[#38383A] border-t-[#007AFF] animate-spin" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Memeriksa data perjalanan yang tersedia...
+              Memeriksa data perjalanan...
             </h2>
             <p className="text-xs sm:text-sm text-[#98989D] max-w-sm">
-              Mencari sesi linimasa lokal di perangkat Anda secara aman.
+              Mencari data linimasa yang terhubung di perangkat Anda.
             </p>
           </div>
         )}
 
-        {/* 2. PROCESSING / ACQUIRING STATE */}
-        {(state === ACQUISITION_STATES.PROCESSING ||
-          state === ACQUISITION_STATES.ACQUIRING) && (
+        {/* 2. RECEIVING STATE */}
+        {state === ACQUISITION_STATES.RECEIVING && (
+          <div className="flex flex-col items-center text-center p-8 space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-[#007AFF]/15 border border-[#007AFF]/30 flex items-center justify-center shadow-2xl">
+              <DownloadIcon className="w-8 h-8 text-[#007AFF] animate-bounce" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Menerima data perjalanan...
+            </h2>
+            <p className="text-xs sm:text-sm text-[#98989D] max-w-sm">
+              Menerima file dari Android Share Sheet.
+            </p>
+          </div>
+        )}
+
+        {/* 3. VALIDATING / PARSING / NORMALIZING STATE */}
+        {(state === ACQUISITION_STATES.VALIDATING ||
+          state === ACQUISITION_STATES.PARSING ||
+          state === ACQUISITION_STATES.NORMALIZING) && (
           <div className="flex flex-col items-center text-center p-8 space-y-4">
             <div className="w-16 h-16 rounded-3xl bg-[#007AFF]/10 border border-[#007AFF]/30 flex items-center justify-center shadow-2xl">
               <RouteIcon className="w-8 h-8 text-[#007AFF] animate-pulse" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Membaca riwayat tempat & rute...
+              {state === ACQUISITION_STATES.VALIDATING
+                ? "Memeriksa data perjalanan..."
+                : state === ACQUISITION_STATES.PARSING
+                ? "Membaca perjalanan Anda..."
+                : "Menyiapkan linimasa..."}
             </h2>
             <p className="text-xs sm:text-sm text-[#98989D] max-w-sm">
-              Menyiapkan koordinat dan jalur visualisasi di browser Anda.
+              Memproses rute dan tempat singgah secara lokal di ponsel Anda.
             </p>
           </div>
         )}
 
-        {/* 3. READY STATE */}
+        {/* 4. READY STATE */}
         {state === ACQUISITION_STATES.READY && (
           <div className="flex flex-col items-center text-center p-8 space-y-4">
             <div className="w-16 h-16 rounded-3xl bg-[#30D158]/15 border border-[#30D158]/30 flex items-center justify-center shadow-2xl">
               <CheckIcon className="w-8 h-8 text-[#30D158]" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Data Perjalanan Siap!
+              Linimasa siap.
             </h2>
             <p className="text-xs sm:text-sm text-[#98989D] max-w-sm">
-              Membuka studio visualisasi peta...
+              Membuka preview visualisasi peta...
             </p>
           </div>
         )}
 
-        {/* 4. FALLBACK / DEFAULT ACQUISITION STATE */}
-        {(state === ACQUISITION_STATES.FALLBACK ||
-          state === ACQUISITION_STATES.ERROR) && (
-          <div className="w-full space-y-6">
-            {/* Card Content */}
-            <div className="text-center max-w-lg mx-auto mb-2">
+        {/* 5. PRIMARY CONNECTION / PWA SHARE TARGET FLOW */}
+        {(state === ACQUISITION_STATES.IDLE ||
+          state === ACQUISITION_STATES.ERROR ||
+          state === ACQUISITION_STATES.FALLBACK) && (
+          <div className="w-full space-y-5">
+            {/* Header Text */}
+            <div className="text-center max-w-md mx-auto mb-1">
               <span className="text-[11px] font-bold tracking-wider text-[#007AFF] uppercase mb-1.5 block">
-                SIAPKAN LINIMASA
+                PENGHUBUNG LINIMASA
               </span>
               <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-2">
-                Hubungkan Data Perjalanan Anda
+                Hubungkan Timeline
               </h1>
               <p className="text-xs sm:text-sm text-[#98989D] leading-relaxed">
-                Pilih file riwayat yang Anda dapatkan dari Google Maps, atau coba data contoh untuk melihat animasi rute secara instan.
+                Kami akan membantu menyiapkan perjalanan Anda langsung dari Google Maps.
               </p>
             </div>
 
-            {/* Error Banner */}
+            {/* Error message */}
             {errorMessage && (
-              <div className="p-4 rounded-2xl bg-[#FF453A]/10 border border-[#FF453A]/20 text-[#FF453A] text-xs sm:text-sm text-center max-w-lg mx-auto">
+              <div className="p-4 rounded-2xl bg-[#FF453A]/10 border border-[#FF453A]/20 text-[#FF453A] text-xs sm:text-sm text-center">
                 {errorMessage}
               </div>
             )}
 
-            {/* Action Card with Drag-Drop & Direct Button */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`p-6 sm:p-8 rounded-3xl border transition-all ${
-                isDragging
-                  ? "border-[#007AFF] bg-[#007AFF]/10 scale-[1.01]"
-                  : "border-[#2C2C2E] bg-[#1C1C1E]"
-              } shadow-2xl`}
-            >
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#2C2C2E] flex items-center justify-center">
-                  <UploadIcon className="w-7 h-7 text-[#007AFF]" />
+            {/* Step 1: Install PWA Prompt if not standalone and can install */}
+            {!isPwaInstalled && !isExportStepOpen ? (
+              <div className="p-6 rounded-3xl bg-[#1C1C1E] border border-[#2C2C2E] space-y-4 text-center shadow-xl">
+                <div className="w-12 h-12 rounded-2xl bg-[#007AFF]/15 text-[#007AFF] flex items-center justify-center mx-auto">
+                  <DownloadIcon className="w-6 h-6" />
                 </div>
-
                 <div className="space-y-1">
-                  <h3 className="text-base sm:text-lg font-semibold text-white">
-                    Pilih File Data dari Perangkat
+                  <h3 className="text-base font-semibold text-white">
+                    Pasang Timeline Visualizer
                   </h3>
-                  <p className="text-xs text-[#98989D]">
-                    File hasil unduhan dari Google Maps di ponsel atau komputer Anda.
+                  <p className="text-xs text-[#98989D] max-w-xs mx-auto">
+                    Pasang Timeline Visualizer agar data perjalanan bisa dikirim langsung ke sini.
                   </p>
                 </div>
 
-                {/* Big Primary Action Button */}
                 <Button
                   size="lg"
                   variant="primary"
-                  onClick={handleNativeConnect}
-                  className="w-full sm:w-auto min-w-[220px] py-3.5 px-8 rounded-2xl text-sm font-semibold shadow-lg shadow-blue-500/20"
-                  icon={<UploadIcon className="w-4 h-4" />}
+                  onClick={handleInstallAndConnect}
+                  className="w-full py-3.5 rounded-2xl text-sm font-semibold shadow-lg shadow-blue-500/20"
                 >
-                  Hubungkan Data Perjalanan
+                  Pasang & Hubungkan
                 </Button>
-
-                <span className="text-[11px] text-[#6E6E73] block pt-1">
-                  atau tarik dan lepas file langsung ke area ini
-                </span>
               </div>
-            </div>
+            ) : (
+              /* Step 2: Export from Google Maps and Share to Timeline Visualizer */
+              <div className="p-6 rounded-3xl bg-[#1C1C1E] border border-[#2C2C2E] space-y-5 shadow-xl">
+                <div className="space-y-3">
+                  <span className="text-xs font-semibold text-[#98989D] uppercase tracking-wider block">
+                    3 Langkah Cepat
+                  </span>
+
+                  <div className="space-y-2.5">
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-[#2C2C2E]/60">
+                      <span className="w-5 h-5 rounded-full bg-[#007AFF] text-white text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        1
+                      </span>
+                      <span className="text-xs text-[#F5F5F7]">
+                        Buka pengaturan Timeline di Google Maps
+                      </span>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-[#2C2C2E]/60">
+                      <span className="w-5 h-5 rounded-full bg-[#007AFF] text-white text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        2
+                      </span>
+                      <span className="text-xs text-[#F5F5F7]">
+                        Export / Bagikan data perjalanan Anda
+                      </span>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-[#2C2C2E]/60">
+                      <span className="w-5 h-5 rounded-full bg-[#30D158] text-white text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        3
+                      </span>
+                      <span className="text-xs text-[#F5F5F7]">
+                        Pilih <strong>Timeline Visualizer</strong> saat membagikan file
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  size="lg"
+                  variant="primary"
+                  onClick={handleOpenTimelineSettings}
+                  className="w-full py-3.5 rounded-2xl text-sm font-semibold shadow-lg shadow-blue-500/20"
+                >
+                  Buka Pengaturan Timeline
+                </Button>
+              </div>
+            )}
 
             {/* Quick Demo Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-[#1C1C1E]/60 border border-[#2C2C2E]">
-              <div className="text-center sm:text-left">
+            <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[#1C1C1E]/60 border border-[#2C2C2E]">
+              <div className="text-left">
                 <span className="text-xs font-semibold text-white block">
-                  Belum memiliki data dari Google Maps?
+                  Ingin langsung melihat pratinjau?
                 </span>
                 <span className="text-[11px] text-[#98989D]">
-                  Lihat demo rute langsung tanpa perlu mengunduh data sendiri.
+                  Coba visualisasi dengan rute contoh.
                 </span>
               </div>
 
               <button
                 type="button"
                 onClick={handleLoadDemo}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#2C2C2E] hover:bg-[#3A3A3C] border border-[#38383A] text-xs font-semibold text-[#F5F5F7] shrink-0 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#2C2C2E] hover:bg-[#3A3A3C] border border-[#38383A] text-xs font-semibold text-[#F5F5F7] shrink-0 transition-colors"
               >
                 <SparklesIcon className="w-3.5 h-3.5 text-[#FF9F0A]" />
                 <span>Gunakan Data Contoh</span>
               </button>
             </div>
 
-            {/* Collapsible Contextual Help Accordion (NOT a tutorial wall) */}
-            <div className="rounded-2xl bg-[#1C1C1E]/40 border border-[#2C2C2E]/60 overflow-hidden">
+            {/* Secondary Fallback File Input */}
+            <div className="text-center pt-1">
               <button
                 type="button"
-                onClick={() => setIsHelpOpen((prev) => !prev)}
-                className="w-full flex items-center justify-between p-4 text-xs font-medium text-[#98989D] hover:text-[#F5F5F7] transition-colors text-left"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 text-xs text-[#98989D] hover:text-[#F5F5F7] underline underline-offset-4 transition-colors"
               >
-                <div className="flex items-center gap-2">
-                  <HelpIcon className="w-3.5 h-3.5 text-[#007AFF]" />
-                  <span>Butuh panduan cara mengunduh data dari Google Maps?</span>
-                </div>
-                <span>{isHelpOpen ? "▲ Tutup" : "▼ Lihat"}</span>
+                <UploadIcon className="w-3.5 h-3.5" />
+                <span>Tambahkan data dari perangkat</span>
               </button>
-
-              {isHelpOpen && (
-                <div className="p-4 pt-0 text-xs text-[#98989D] space-y-2 border-t border-[#2C2C2E]/40 animate-fadeIn">
-                  <div className="flex gap-2 items-start">
-                    <span className="text-[#007AFF] font-bold">1.</span>
-                    <span>Buka aplikasi <strong>Google Maps</strong> di HP Anda, lalu ketuk <strong>Foto Profil</strong> di kanan atas.</span>
-                  </div>
-                  <div className="flex gap-2 items-start">
-                    <span className="text-[#007AFF] font-bold">2.</span>
-                    <span>Pilih <strong>Linimasa Anda</strong> → ketuk ikon menu (⋯) atau setelan → <strong>Setelan & Privasi Linimasa</strong>.</span>
-                  </div>
-                  <div className="flex gap-2 items-start">
-                    <span className="text-[#007AFF] font-bold">3.</span>
-                    <span>Ketuk <strong>Ekspor / Unduh Data Linimasa</strong>, lalu pilih file tersebut dengan tombol di atas.</span>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-[11px] text-[#6E6E73] max-w-2xl w-full mx-auto pt-4 border-t border-[#1C1C1E]">
-        Semua pemrosesan data linimasa berlangsung secara privat dan lokal di browser Anda.
+      <footer className="text-center text-[11px] text-[#6E6E73] max-w-xl w-full mx-auto pt-4 border-t border-[#1C1C1E]">
+        Data perjalanan diproses di perangkat Anda selama memungkinkan.
       </footer>
     </div>
   );

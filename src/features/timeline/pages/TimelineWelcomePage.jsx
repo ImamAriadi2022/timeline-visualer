@@ -45,7 +45,7 @@ export function TimelineWelcomePage({ onStart, onUseSample }) {
             className="w-full sm:w-auto text-base py-4 px-8 rounded-2xl shadow-xl shadow-blue-500/25"
             icon={<ArrowRightIcon className="w-5 h-5" />}
           >
-            Mulai Buat Linimasa
+            Hubungkan Timeline
           </Button>
 
           {onUseSample && (

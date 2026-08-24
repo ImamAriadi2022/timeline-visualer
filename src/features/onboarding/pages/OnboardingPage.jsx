@@ -113,7 +113,7 @@ export function OnboardingPage({ onFinish }) {
             className="w-full sm:w-auto min-w-[200px] text-base py-4 px-8 rounded-2xl shadow-lg shadow-blue-500/20"
             icon={<ArrowRightIcon className="w-5 h-5" />}
           >
-            {isLastSlide ? "Mulai Buat Linimasa" : "Lanjutkan"}
+            {isLastSlide ? "Hubungkan Timeline" : "Lanjutkan"}
           </Button>
         </div>
       </main>

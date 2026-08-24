@@ -89,7 +89,7 @@ export async function renderTimelineVideo({
     }
   };
 
-  const totalDurationMs = Math.max(5000, Number(durationSeconds) * 1000);
+  const totalDurationMs = Math.min(90000, Math.max(5000, Number(durationSeconds) * 1000));
 
   // Start recording
   recorder.start(200);

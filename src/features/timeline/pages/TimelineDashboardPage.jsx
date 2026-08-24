@@ -13,16 +13,18 @@ import { Button } from "@/shared/components/Button";
 import { DownloadIcon, HelpIcon, UploadIcon } from "@/shared/components/Icons";
 
 const FPS_OPTIONS = [
-  { id: 25, label: "25 FPS", sublabel: "Standar" },
-  { id: 30, label: "30 FPS", sublabel: "Halus" },
-  { id: 60, label: "60 FPS", sublabel: "Sangat Mulus ✨" },
+  { id: 24, label: "24 FPS", sublabel: "Sinematik" },
+  { id: 30, label: "30 FPS", sublabel: "Standar Web" },
+  { id: 60, label: "60 FPS", sublabel: "Sangat Mulus" },
 ];
+
+const DURATION_PRESETS = [10, 15, 30, 60, 90];
 
 export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
   const [style, setStyle] = useState("normal");
   const [aspectRatio, setAspectRatio] = useState("square");
-  const [duration, setDuration] = useState(10);
-  const [fps, setFps] = useState(60);
+  const [duration, setDuration] = useState(15);
+  const [fps, setFps] = useState(30);
 
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -35,7 +37,7 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
   // Initialize animation controller with user-selected duration
   useEffect(() => {
     const controller = createAnimationController({
-      durationSeconds: Number(duration),
+      durationSeconds: Math.min(90, Math.max(5, Number(duration))),
       onProgress: (p) => {
         setProgress(p);
       },
@@ -98,13 +100,14 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
   return (
     <div className="min-h-screen bg-[#000000] text-[#F5F5F7] flex flex-col">
       {/* Top Header */}
-      <header className="h-16 px-6 border-b border-[#2C2C2E] flex items-center justify-between shrink-0 bg-[#0A0A0C]">
-        <div className="flex items-center gap-3">
+      <header className="h-16 px-4 sm:px-6 border-b border-[#2C2C2E] flex items-center justify-between shrink-0 bg-[#0A0A0C]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-2 h-2 rounded-full bg-[#007AFF]" />
           <span className="text-xs font-bold tracking-widest text-[#007AFF]">
             TIMELINE VISUALIZER
           </span>
-          <span className="text-xs text-[#6E6E73]">/</span>
-          <span className="text-xs text-[#98989D] uppercase tracking-wider">
+          <span className="text-xs text-[#6E6E73] hidden sm:inline">/</span>
+          <span className="text-xs text-[#98989D] uppercase tracking-wider hidden sm:inline">
             STUDIO
           </span>
         </div>
@@ -131,10 +134,10 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
       </header>
 
       {/* Main Studio Workspace */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_400px] overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_400px] overflow-hidden">
         {/* Left: Map Canvas & Scrubber */}
-        <main className="flex flex-col p-4 sm:p-6 gap-4 overflow-y-auto">
-          <div className="flex-1 min-h-[400px] lg:min-h-[500px]">
+        <main className="flex flex-col p-3 sm:p-6 gap-3 sm:gap-4 overflow-y-auto">
+          <div className="flex-1 min-h-[360px] sm:min-h-[460px] lg:min-h-[500px]">
             <TimelineMap
               points={points}
               places={timeline?.places || []}
@@ -157,9 +160,9 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
           </div>
         </main>
 
-        {/* Right: Controls & Export Settings Sidebar */}
-        <aside className="border-t lg:border-t-0 lg:border-l border-[#2C2C2E] bg-[#0A0A0C] p-6 flex flex-col justify-between gap-6 overflow-y-auto">
-          <div className="space-y-6">
+        {/* Right: Controls & Video Configuration Sidebar */}
+        <aside className="border-t lg:border-t-0 lg:border-l border-[#2C2C2E] bg-[#0A0A0C] p-4 sm:p-6 flex flex-col justify-between gap-6 overflow-y-auto">
+          <div className="space-y-5 sm:space-y-6">
             {/* 1. Style Selector */}
             <StyleSelector
               currentStyle={style}
@@ -169,7 +172,7 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
             {/* 2. Aspect Ratio Selector */}
             <div>
               <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
-                Format / Rasio Aspek Video
+                Rasio Aspek Video
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {Object.values(ASPECT_RATIOS).map((item) => {
@@ -195,34 +198,53 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
               </div>
             </div>
 
-            {/* 3. Duration Slider */}
+            {/* 3. Duration Selector & Preset Chips */}
             <div>
               <div className="flex items-center justify-between text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
-                <span>Durasi Animasi / Video</span>
-                <span className="text-white font-mono text-sm bg-[#1C1C1E] px-2 py-0.5 rounded border border-[#2C2C2E]">
+                <span>Durasi Video</span>
+                <span className="text-white font-mono text-xs bg-[#1C1C1E] px-2 py-0.5 rounded border border-[#2C2C2E]">
                   {duration} detik
                 </span>
               </div>
 
+              {/* Preset Chips */}
+              <div className="grid grid-cols-5 gap-1.5 mb-2.5">
+                {DURATION_PRESETS.map((sec) => (
+                  <button
+                    key={sec}
+                    type="button"
+                    onClick={() => setDuration(sec)}
+                    className={`py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      duration === sec
+                        ? "bg-[#007AFF] text-white shadow-sm"
+                        : "bg-[#1C1C1E] border border-[#2C2C2E] text-[#98989D] hover:text-white"
+                    }`}
+                  >
+                    {sec}s
+                  </button>
+                ))}
+              </div>
+
+              {/* Slider */}
               <div className="flex items-center gap-3">
-                <span className="text-xs text-[#6E6E73]">5s</span>
+                <span className="text-[10px] text-[#6E6E73]">5s</span>
                 <input
                   type="range"
                   min="5"
                   max="90"
                   step="1"
                   value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value))}
+                  onChange={(e) => setDuration(Math.min(90, Number(e.target.value)))}
                   className="w-full h-2 bg-[#2C2C2E] rounded-lg appearance-none cursor-pointer accent-[#007AFF]"
                 />
-                <span className="text-xs text-[#6E6E73]">90s</span>
+                <span className="text-[10px] text-[#6E6E73]">90s</span>
               </div>
             </div>
 
             {/* 4. Frame Rate (FPS) Selector */}
             <div>
               <label className="block text-xs font-semibold text-[#98989D] uppercase tracking-wider mb-2">
-                Frame Rate (Kelancaran)
+                Frame Rate (FPS)
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {FPS_OPTIONS.map((item) => {
@@ -268,8 +290,8 @@ export function TimelineDashboardPage({ timeline, onReset, onHelp }) {
             >
               Ekspor Video MP4
             </Button>
-            <p className="text-[11px] text-[#6E6E73] text-center mt-2.5">
-              Render {duration}s · {fps} FPS · Rasio {ASPECT_RATIOS[aspectRatio]?.label}
+            <p className="text-[11px] text-[#6E6E73] text-center mt-2">
+              {duration}s · {fps} FPS · {ASPECT_RATIOS[aspectRatio]?.label}
             </p>
           </div>
         </aside>

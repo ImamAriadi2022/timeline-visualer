@@ -1,0 +1,49 @@
+{
+  "name": "Timeline Visualizer",
+  "short_name": "Timeline",
+  "description": "Visualisasi rute dan video animasi linimasa perjalanan",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0A0A0C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "timeline",
+          "accept": [
+            "application/json",
+            ".json",
+            "text/plain",
+            "*/*"
+          ]
+        }
+      ]
+    }
+  }
+}

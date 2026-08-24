@@ -2,44 +2,56 @@ import { parseTimelineJson } from "./timeline-parser.service";
 import { normalizeTimelineData } from "./timeline-normalizer.service";
 import { timelineStorage } from "./timeline-storage.service";
 import { getSampleTimelineData } from "./sample-data.service";
+import { pwaService } from "@/features/pwa/services/pwa.service";
 
 export const ACQUISITION_STATES = {
   IDLE: "IDLE",
   DETECTING: "DETECTING",
-  ACQUIRING: "ACQUIRING",
-  PROCESSING: "PROCESSING",
+  RECEIVING: "RECEIVING",
+  VALIDATING: "VALIDATING",
+  PARSING: "PARSING",
+  NORMALIZING: "NORMALIZING",
   READY: "READY",
   FALLBACK: "FALLBACK",
   ERROR: "ERROR",
 };
 
 /**
- * Service to orchestrate the Timeline Data Acquisition state machine.
+ * Service to orchestrate the Timeline Data Acquisition state machine and Web Share Target.
  */
 export const dataAcquisitionService = {
   /**
-   * Checks if a valid timeline dataset already exists in local storage / IndexedDB.
+   * Checks if an active timeline exists or if a pending file was received via Web Share Target.
    */
-  async detectStoredTimeline() {
+  async checkIncomingOrStored() {
+    // 1. Check for incoming Web Share Target data from Android Share Sheet
+    const sharedData = await pwaService.getPendingShareData();
+    if (sharedData) {
+      return { type: "shared", data: sharedData };
+    }
+
+    // 2. Check for existing timeline stored in IndexedDB
     try {
       const stored = await timelineStorage.load();
       if (stored && Array.isArray(stored.points) && stored.points.length > 0) {
-        return stored;
+        return { type: "stored", data: stored };
       }
-      return null;
-    } catch {
-      return null;
-    }
+    } catch {}
+
+    return null;
   },
 
   /**
-   * Processes a raw file or text source, normalizes into the internal timeline model,
-   * and saves it to local IndexedDB storage.
+   * Processes a raw file or text source through the validation -> parsing -> normalizing pipeline,
+   * updating through explicit progress states.
    */
-  async processSource(fileOrText) {
+  async processSource(fileOrText, onStateChange) {
     if (!fileOrText) {
-      throw new Error("Sumber data perjalanan tidak ditemukan.");
+      throw new Error("Data perjalanan belum dapat dibaca.");
     }
+
+    onStateChange?.(ACQUISITION_STATES.RECEIVING);
+    await new Promise((r) => setTimeout(r, 100));
 
     let textContent = "";
     if (typeof fileOrText === "string") {
@@ -50,10 +62,23 @@ export const dataAcquisitionService = {
       textContent = JSON.stringify(fileOrText);
     }
 
+    onStateChange?.(ACQUISITION_STATES.VALIDATING);
+    if (!textContent || textContent.trim().length === 0) {
+      throw new Error("Data perjalanan kosong atau tidak valid.");
+    }
+    await new Promise((r) => setTimeout(r, 100));
+
+    onStateChange?.(ACQUISITION_STATES.PARSING);
     const rawParsed = parseTimelineJson(textContent);
+    await new Promise((r) => setTimeout(r, 100));
+
+    onStateChange?.(ACQUISITION_STATES.NORMALIZING);
     const normalizedModel = normalizeTimelineData(rawParsed);
+    await new Promise((r) => setTimeout(r, 100));
 
     await timelineStorage.save(normalizedModel);
+    onStateChange?.(ACQUISITION_STATES.READY);
+
     return normalizedModel;
   },
 
@@ -64,40 +89,5 @@ export const dataAcquisitionService = {
     const sample = getSampleTimelineData();
     await timelineStorage.save(sample);
     return sample;
-  },
-
-  /**
-   * Attempts to open the native system file picker if supported by the browser.
-   */
-  async acquireViaNativePicker() {
-    if (typeof window !== "undefined" && typeof window.showOpenFilePicker === "function") {
-      try {
-        const [fileHandle] = await window.showOpenFilePicker({
-          types: [
-            {
-              description: "Data Riwayat Lokasi Google Maps",
-              accept: {
-                "application/json": [".json"],
-                "text/plain": [".json", ".txt"],
-              },
-            },
-          ],
-          excludeAcceptAllOption: false,
-          multiple: false,
-        });
-
-        if (fileHandle) {
-          const file = await fileHandle.getFile();
-          return await this.processSource(file);
-        }
-      } catch (err) {
-        // User aborted/cancelled the picker
-        if (err.name === "AbortError") {
-          return null;
-        }
-        throw err;
-      }
-    }
-    return null;
   },
 };
