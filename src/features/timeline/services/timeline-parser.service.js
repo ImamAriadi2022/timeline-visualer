@@ -7,7 +7,7 @@ function parseIsoTime(input) {
 }
 
 /**
- * Parses raw JSON input into standardized intermediate timeline segments.
+ * Parses raw input into standardized intermediate timeline segments.
  * Supports:
  * - Linimasa.json format (semanticSegments with timelinePath, visit, activity, and rawSignals)
  * - Google Takeout timelineObjects format (activitySegment, placeVisit)
@@ -16,7 +16,7 @@ function parseIsoTime(input) {
  */
 export function parseTimelineJson(rawInput) {
   if (!rawInput) {
-    throw new Error("Data Linimasa kosong. Silakan pilih file JSON yang valid.");
+    throw new Error("Data riwayat perjalanan kosong. Silakan pilih file yang sesuai.");
   }
 
   let data = rawInput;
@@ -24,7 +24,7 @@ export function parseTimelineJson(rawInput) {
     try {
       data = JSON.parse(rawInput);
     } catch {
-      throw new Error("Format JSON tidak valid. Pastikan file ekspor Google Maps Timeline tidak rusak.");
+      throw new Error("File data tidak dapat dibaca. Pastikan file riwayat Google Maps tidak rusak.");
     }
   }
 
@@ -39,188 +39,202 @@ export function parseTimelineJson(rawInput) {
       const startTime = parseIsoTime(segment.startTime);
       const endTime = parseIsoTime(segment.endTime);
 
-      // (a) timelinePath
-      if (Array.isArray(segment.timelinePath) && segment.timelinePath.length > 0) {
-        const pathPoints = segment.timelinePath
-          .map((tp, pIdx) => {
-            const coord = parseGeoCoordinate(tp.point || tp);
-            if (!coord) return null;
-            return {
+      // Extract points from timelinePath
+      if (Array.isArray(segment.timelinePath)) {
+        const journeyPoints = [];
+        segment.timelinePath.forEach((pt, ptIdx) => {
+          const coord = parseGeoCoordinate(pt.point || pt);
+          if (coord) {
+            const time = parseIsoTime(pt.time) || startTime;
+            const fullPoint = {
               ...coord,
-              time: parseIsoTime(tp.time) || startTime,
-              id: `tp_${segIdx}_${pIdx}`,
+              time,
+              id: `seg_${segIdx}_pt_${ptIdx}`,
             };
-          })
-          .filter(Boolean);
-
-        if (pathPoints.length > 0) {
-          extractedPoints.push(...pathPoints);
-          if (pathPoints.length > 1) {
-            extractedJourneys.push({
-              id: `j_path_${segIdx}`,
-              route: pathPoints,
-              startTime,
-              endTime,
-              activityType: "MOVING",
-            });
+            extractedPoints.push(fullPoint);
+            journeyPoints.push(fullPoint);
           }
-        }
-      }
+        });
 
-      // (b) visit
-      if (segment.visit) {
-        const top = segment.visit.topCandidate || segment.visit;
-        const coord = parseGeoCoordinate(top.placeLocation || top.location || segment.visit);
-        if (coord) {
-          const placePoint = {
-            ...coord,
-            time: startTime,
-            id: `visit_${segIdx}`,
-          };
-          extractedPoints.push(placePoint);
-
-          extractedPlaces.push({
-            id: `place_${segIdx}`,
-            name:
-              top.semanticType && top.semanticType !== "UNKNOWN"
-                ? formatSemanticType(top.semanticType)
-                : top.placeId
-                ? `Place (${top.placeId.slice(0, 8)})`
-                : "Visited Place",
-            semanticType: top.semanticType || "VISIT",
-            placeId: top.placeId || null,
-            location: coord,
+        if (journeyPoints.length > 0) {
+          extractedJourneys.push({
+            id: `journey_${segIdx}`,
             startTime,
             endTime,
+            route: journeyPoints,
+            activityType: segment.activity?.topCandidate?.type || "IN_PASSENGER_VEHICLE",
           });
         }
       }
 
-      // (c) activity
+      // Extract places from visit
+      if (segment.visit) {
+        const visit = segment.visit;
+        const placeCoord =
+          parseGeoCoordinate(visit.topCandidate?.placeLocation) ||
+          parseGeoCoordinate(visit.topCandidate) ||
+          parseGeoCoordinate(visit);
+
+        if (placeCoord) {
+          extractedPoints.push({
+            ...placeCoord,
+            time: startTime,
+            id: `visit_${segIdx}`,
+          });
+
+          extractedPlaces.push({
+            id: `place_${segIdx}`,
+            name:
+              visit.topCandidate?.name ||
+              visit.topCandidate?.placeID ||
+              formatSemanticType(visit.topCandidate?.semanticType) ||
+              "Tempat Singgah",
+            location: placeCoord,
+            startTime,
+            endTime,
+            semanticType: visit.topCandidate?.semanticType,
+          });
+        }
+      }
+
+      // Extract activity information
       if (segment.activity) {
-        const act = segment.activity;
-        const actType =
-          act.topCandidate?.type ||
-          act.activityType ||
-          "IN_PASSENGER_VEHICLE";
+        const actType = segment.activity.topCandidate?.type;
+        if (actType) extractedActivities.add(actType);
 
-        extractedActivities.add(actType);
-
-        const startCoord = parseGeoCoordinate(act.start);
-        const endCoord = parseGeoCoordinate(act.end);
-
-        const actPoints = [];
+        const startCoord = parseGeoCoordinate(segment.activity.start);
+        const endCoord = parseGeoCoordinate(segment.activity.end);
         if (startCoord) {
-          actPoints.push({
+          extractedPoints.push({
             ...startCoord,
             time: startTime,
             id: `act_start_${segIdx}`,
           });
         }
         if (endCoord) {
-          actPoints.push({
+          extractedPoints.push({
             ...endCoord,
             time: endTime,
             id: `act_end_${segIdx}`,
           });
         }
+      }
 
-        if (actPoints.length > 0) {
-          extractedPoints.push(...actPoints);
-        }
-
-        if (actPoints.length > 1) {
-          extractedJourneys.push({
-            id: `j_act_${segIdx}`,
-            route: actPoints,
-            startTime,
-            endTime,
-            activityType: actType,
-            distanceMeters: act.distanceMeters,
-          });
-        }
+      // Fallback: extract from rawSignals if points are sparse
+      if (Array.isArray(segment.rawSignals)) {
+        segment.rawSignals.forEach((sig, sigIdx) => {
+          if (sig.position) {
+            const coord = parseGeoCoordinate(sig.position);
+            if (coord) {
+              extractedPoints.push({
+                ...coord,
+                time: parseIsoTime(sig.position.timestamp) || startTime,
+                id: `raw_${segIdx}_${sigIdx}`,
+              });
+            }
+          }
+        });
       }
     });
   }
 
-  // 2. Format: rawSignals (fallback or supplemental in modern exports)
-  if (extractedPoints.length === 0 && Array.isArray(data.rawSignals)) {
-    data.rawSignals.forEach((signal, sIdx) => {
-      if (signal.position) {
-        const coord = parseGeoCoordinate(signal.position.LatLng || signal.position.latLng || signal.position);
+  // 2. Format: Raw signals array directly on root
+  if (Array.isArray(data.rawSignals) && extractedPoints.length === 0) {
+    data.rawSignals.forEach((sig, idx) => {
+      if (sig.position) {
+        const coord = parseGeoCoordinate(sig.position);
         if (coord) {
           extractedPoints.push({
             ...coord,
-            time: parseIsoTime(signal.position.timestamp),
-            id: `raw_${sIdx}`,
+            time: parseIsoTime(sig.position.timestamp),
+            id: `root_raw_${idx}`,
           });
         }
       }
     });
   }
 
-  // 3. Format: timelineObjects (standard Google Takeout)
-  const timelineObjects = Array.isArray(data)
-    ? data
-    : Array.isArray(data.timelineObjects)
-    ? data.timelineObjects
-    : null;
+  // 3. Format: Google Takeout timelineObjects
+  if (Array.isArray(data.timelineObjects)) {
+    data.timelineObjects.forEach((obj, idx) => {
+      if (obj.activitySegment) {
+        const act = obj.activitySegment;
+        const start = parseIsoTime(act.duration?.startTimestamp);
+        const end = parseIsoTime(act.duration?.endTimestamp);
+        const actType = act.activityType;
+        if (actType) extractedActivities.add(actType);
 
-  if (timelineObjects && extractedPoints.length === 0) {
-    timelineObjects.forEach((entry, idx) => {
-      // Activity segment
-      if (entry.activitySegment) {
-        const seg = entry.activitySegment;
-        const start = parseIsoTime(seg.duration?.startTimestamp || seg.duration?.startTimestampMs);
-        const end = parseIsoTime(seg.duration?.endTimestamp || seg.duration?.endTimestampMs);
-        const actType = seg.activityType || "MOVING";
-        extractedActivities.add(actType);
+        const journeyPts = [];
 
-        const rawPath =
-          seg.simplifiedRawPath?.points ||
-          seg.waypointPath?.waypoints ||
-          seg.timelinePath ||
-          [];
+        // Check waypoint path
+        if (Array.isArray(act.waypointPath?.waypoints)) {
+          act.waypointPath.waypoints.forEach((wp, wpIdx) => {
+            const coord = parseGeoCoordinate(wp);
+            if (coord) {
+              const pt = {
+                ...coord,
+                time: start,
+                id: `to_wp_${idx}_${wpIdx}`,
+              };
+              extractedPoints.push(pt);
+              journeyPts.push(pt);
+            }
+          });
+        }
 
-        const route = (Array.isArray(rawPath) ? rawPath : [])
-          .map((p, pIdx) => {
+        // Check simplified raw path
+        if (Array.isArray(act.simplifiedRawPath?.points)) {
+          act.simplifiedRawPath.points.forEach((p, pIdx) => {
             const coord = parseGeoCoordinate(p);
-            if (!coord) return null;
-            return {
-              ...coord,
-              time: parseIsoTime(p.timestamp || p.time) || start,
-              id: `to_p_${idx}_${pIdx}`,
-            };
-          })
-          .filter(Boolean);
+            if (coord) {
+              const pt = {
+                ...coord,
+                time: parseIsoTime(p.timestampMs) || start,
+                id: `to_srp_${idx}_${pIdx}`,
+              };
+              extractedPoints.push(pt);
+              journeyPts.push(pt);
+            }
+          });
+        }
 
-        if (route.length > 0) {
-          extractedPoints.push(...route);
-          if (route.length > 1) {
-            extractedJourneys.push({
-              id: `to_j_${idx}`,
-              route,
-              startTime: start,
-              endTime: end,
-              activityType: actType,
-              distanceMeters: seg.distance,
-            });
-          }
+        // Start and end location points
+        const startCoord = parseGeoCoordinate(act.startLocation);
+        const endCoord = parseGeoCoordinate(act.endLocation);
+
+        if (startCoord) {
+          const pt = { ...startCoord, time: start, id: `to_start_${idx}` };
+          extractedPoints.push(pt);
+          journeyPts.unshift(pt);
+        }
+        if (endCoord) {
+          const pt = { ...endCoord, time: end, id: `to_end_${idx}` };
+          extractedPoints.push(pt);
+          journeyPts.push(pt);
+        }
+
+        if (journeyPts.length > 0) {
+          extractedJourneys.push({
+            id: `to_journey_${idx}`,
+            startTime: start,
+            endTime: end,
+            route: journeyPts,
+            activityType: actType || "IN_PASSENGER_VEHICLE",
+          });
         }
       }
 
-      // Place visit
-      if (entry.placeVisit) {
-        const visit = entry.placeVisit;
-        const start = parseIsoTime(visit.duration?.startTimestamp || visit.duration?.startTimestampMs);
-        const end = parseIsoTime(visit.duration?.endTimestamp || visit.duration?.endTimestampMs);
+      if (obj.placeVisit) {
+        const visit = obj.placeVisit;
         const loc = parseGeoCoordinate(visit.location);
+        const start = parseIsoTime(visit.duration?.startTimestamp);
+        const end = parseIsoTime(visit.duration?.endTimestamp);
 
         if (loc) {
           extractedPoints.push({ ...loc, time: start, id: `to_pv_${idx}` });
           extractedPlaces.push({
             id: `to_place_${idx}`,
-            name: visit.location?.name || visit.location?.address || "Visited Place",
+            name: visit.location?.name || visit.location?.address || "Tempat Singgah",
             location: loc,
             startTime: start,
             endTime: end,
@@ -246,7 +260,7 @@ export function parseTimelineJson(rawInput) {
 
   if (extractedPoints.length === 0) {
     throw new Error(
-      "Format file Linimasa ini tidak dikenali atau tidak memiliki koordinat lokasi. Ekspor kembali JSON Linimasa dari Google Maps dan coba lagi."
+      "Format file riwayat ini tidak berisi koordinat rute yang dapat digunakan. Silakan periksa kembali file dari Google Maps Anda."
     );
   }
 
@@ -259,7 +273,7 @@ export function parseTimelineJson(rawInput) {
 }
 
 function formatSemanticType(type) {
-  if (!type) return "Place";
+  if (!type) return "Tempat Singgah";
   return type
     .replace(/_/g, " ")
     .toLowerCase()

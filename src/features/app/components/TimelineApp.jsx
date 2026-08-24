@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from "react";
 import { OnboardingPage } from "@/features/onboarding/pages/OnboardingPage";
 import { TimelineWelcomePage } from "@/features/timeline/pages/TimelineWelcomePage";
-import { TimelineImportPage } from "@/features/timeline/pages/TimelineImportPage";
+import { TimelineAcquisitionPage } from "@/features/timeline/pages/TimelineAcquisitionPage";
 import { TimelineDashboardPage } from "@/features/timeline/pages/TimelineDashboardPage";
 import { onboardingState } from "@/features/onboarding/services/onboarding.service";
 import { timelineStorage } from "@/features/timeline/services/timeline-storage.service";
-import { getSampleTimelineData } from "@/features/timeline/services/sample-data.service";
+import { dataAcquisitionService } from "@/features/timeline/services/data-acquisition.service";
 import { LoadingState } from "@/shared/components/LoadingState";
 
 export function TimelineApp() {
@@ -48,8 +48,7 @@ export function TimelineApp() {
   };
 
   const handleUseSample = async () => {
-    const sample = getSampleTimelineData();
-    await timelineStorage.save(sample);
+    const sample = await dataAcquisitionService.loadSampleDemo();
     setTimelineData(sample);
     setScreen("dashboard");
   };
@@ -96,10 +95,10 @@ export function TimelineApp() {
 
   if (screen === "prepare") {
     return (
-      <TimelineImportPage
+      <TimelineAcquisitionPage
         onTimelineLoaded={handleTimelineLoaded}
         onBack={() => setScreen("welcome")}
-        onUseSample={handleUseSample}
+        autoDetect={false}
       />
     );
   }
